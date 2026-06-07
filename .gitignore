@@ -1,0 +1,39 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Docker
+.docker/
+
+# ms-doc-processor generated output
+ms-doc-processor/output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentación local (no necesaria en el servidor)
+docs/
+informe/img/
+
+*.zip
+
+/.agents/
+/.claude/
+CLAUDE.md
+skills-lock.json

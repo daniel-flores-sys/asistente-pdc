@@ -1,0 +1,220 @@
+name: CI/CD — Build, Push y Deploy en Swarm
+
+# ─── Cuándo corre este workflow ────────────────────────────────────────────────
+# Cada push a 'main' dispara dos jobs en secuencia:
+#   1. build-and-push → construye las 6 imágenes Docker y las sube a DockerHub
+#   2. deploy         → requiere aprobación manual en GitHub antes de correr
+#                       luego conecta al Swarm Manager vía SSH+ProxyJump y hace
+#                       rolling update de cada servicio con la imagen nueva
+on:
+  push:
+    branches: [main]
+
+# ─── Secrets requeridos en GitHub → Settings → Secrets and variables → Actions ─
+#   DOCKERHUB_USERNAME     : tu usuario de DockerHub  (danielfloressys)
+#   DOCKERHUB_TOKEN        : Access Token de DockerHub (no tu contraseña)
+#   SSH_PRIVATE_KEY_BASTION: clave privada ED25519/RSA para usrproxy@bastión
+#   SSH_PRIVATE_KEY_SERVER : clave privada ED25519/RSA para admin245@192.168.100.245
+#   AWS_ACCESS_KEY_ID      : credencial IAM para S3
+#   AWS_SECRET_ACCESS_KEY  : credencial IAM para S3
+#   AWS_S3_BUCKET          : nombre del bucket S3
+#   JWT_SECRET             : secret JWT mínimo 32 chars (generado con openssl rand -base64 32)
+#   ADMIN_PASSWORD         : contraseña del administrador inicial
+#
+# ─── Environment requerido en GitHub → Settings → Environments ──────────────
+#   Nombre: "production"
+#   Required reviewers: daniel-flores-sys
+
+jobs:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 1 — Construir las imágenes y publicarlas en DockerHub
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-and-push:
+    name: Build y Push a DockerHub
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Login en DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Cada servicio recibe dos tags:
+      #   :latest  → Swarm siempre jala la versión más reciente
+      #   :sha     → trazabilidad exacta (saber qué commit está corriendo)
+
+      - name: Build y push postgres (imagen con schema)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-doc-processor/infra/postgres
+          file: ./ms-doc-processor/infra/postgres/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdc-postgres:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdc-postgres:${{ github.sha }}
+
+      - name: Build y push ms-orchestrator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-orchestrator
+          file: ./ms-orchestrator/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:${{ github.sha }}
+
+      - name: Build y push ms-ai-generator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-ai-generator
+          file: ./ms-ai-generator/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }}
+
+      - name: Build y push ms-doc-processor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-doc-processor
+          file: ./ms-doc-processor/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:${{ github.sha }}
+
+      - name: Build y push ms-ingestion
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-ingestion
+          file: ./ms-ingestion/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:${{ github.sha }}
+
+      - name: Build y push ms-monitor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-monitor
+          file: ./ms-monitor/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:${{ github.sha }}
+
+      - name: Build y push ms-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-frontend
+          file: ./ms-frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:${{ github.sha }}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 2 — Desplegar en Docker Swarm (requiere aprobación manual)
+  # ═══════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: Deploy en Docker Swarm (requiere aprobación)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+
+      - name: Configurar SSH con ProxyJump
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.SSH_PRIVATE_KEY_BASTION }}" > ~/.ssh/id_bastion
+          chmod 600 ~/.ssh/id_bastion
+
+          echo "${{ secrets.SSH_PRIVATE_KEY_SERVER }}" > ~/.ssh/id_server_245
+          chmod 600 ~/.ssh/id_server_245
+
+          cat > ~/.ssh/config << 'EOF'
+          Host bastion
+            HostName       201.131.45.42
+            User           usrproxy
+            IdentityFile   ~/.ssh/id_bastion
+            StrictHostKeyChecking no
+            ServerAliveInterval  60
+            ServerAliveCountMax  5
+
+          Host server-245
+            HostName       192.168.100.245
+            User           admin245
+            ProxyJump      bastion
+            IdentityFile   ~/.ssh/id_server_245
+            StrictHostKeyChecking no
+            ServerAliveInterval  60
+            ServerAliveCountMax  5
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Verificar conectividad SSH
+        run: |
+          ssh server-245 "echo '✓ Runner conectado a $(hostname) vía ProxyJump'"
+
+      # Rolling updates — parallelism=1 → zero-downtime
+      # Si el nuevo contenedor falla el healthcheck, Swarm revierte automáticamente
+
+      - name: Rolling update — ms-frontend
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:latest \
+            --with-registry-auth \
+            pdc_ms-frontend"
+
+      - name: Rolling update — ms-orchestrator
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:latest \
+            --env-add JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --env-add ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
+            --with-registry-auth \
+            pdc_ms-orchestrator"
+
+      - name: Rolling update — ms-ai-generator
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:latest \
+            --with-registry-auth \
+            pdc_ms-ai-generator"
+
+      - name: Rolling update — ms-doc-processor
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:latest \
+            --env-add AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+            --env-add AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+            --env-add AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }} \
+            --env-add AWS_REGION=us-east-1 \
+            --with-registry-auth \
+            pdc_ms-doc-processor"
+
+      - name: Rolling update — ms-ingestion
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:latest \
+            --with-registry-auth \
+            pdc_ms-ingestion"
+
+      - name: Rolling update — ms-monitor
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:latest \
+            --with-registry-auth \
+            pdc_ms-monitor"
+
+      - name: Verificar estado del Swarm
+        run: |
+          ssh server-245 "docker service ls"
