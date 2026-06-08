@@ -2,16 +2,20 @@
 # Compila la app React en archivos estáticos optimizados.
 FROM node:20-alpine AS builder
 
+# corepack viene incluido en Node 16.13+ — lo usamos para activar pnpm
+# sin necesidad de instalarlo por separado (más limpio y reproducible)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Instalar dependencias primero para aprovechar el caché de Docker:
 # si package.json no cambia, esta capa no se reconstruye.
-COPY package.json package-lock.json ./
-RUN npm ci --frozen-lockfile
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # Copiar el resto del código y compilar (genera /app/dist)
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # ── Stage 2: Serve ───────────────────────────────────────────────────────────
 # Imagen final: solo nginx + los archivos estáticos.

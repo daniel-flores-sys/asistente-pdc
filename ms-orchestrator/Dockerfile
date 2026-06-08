@@ -3,29 +3,39 @@
 # Esta capa nunca llega a producción: solo usamos su output (dist/).
 FROM node:20-alpine AS builder
 
+# corepack viene incluido en Node 16.13+ — lo usamos para activar pnpm
+# sin necesidad de instalarlo por separado (más limpio y reproducible)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Copiar solo los manifiestos primero para aprovechar el caché de capas:
+# si package.json y pnpm-lock.yaml no cambian, esta capa no se reconstruye
+COPY package.json pnpm-lock.yaml ./
 
-# npm ci garantiza builds reproducibles: requiere package-lock.json y no lo modifica.
-RUN npm ci
+# --frozen-lockfile garantiza builds reproducibles: falla si el lock está desincronizado
+# --ignore-scripts evita postinstall scripts que requieren aprobación interactiva en pnpm v11
+# (@nestjs/core postinstall es solo warmup de metadata — no afecta funcionalidad)
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src/ ./src/
 
-RUN npx tsc -p tsconfig.json
+RUN pnpm run build
 
 # ─── Etapa 2: Producción ─────────────────────────────────────────────────────
 # Solo copiamos el JS compilado + dependencias de producción.
 # Sin TypeScript, sin ts-node-dev, sin código fuente → imagen mínima y segura.
 FROM node:20-alpine AS production
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml ./
 
-# --omit=dev excluye devDependencies (typescript, ts-node-dev, @types/*)
-RUN npm ci --omit=dev
+# --prod instala solo dependencies, excluye devDependencies
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
 
