@@ -2,15 +2,16 @@ import {
   Controller, Post, Get, Body,
   UseGuards, Request, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { IsEmail, IsString, IsNotEmpty, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
 import { AuthService }    from '../../infrastructure/services/auth.service';
 import { JwtAuthGuard }  from '../../infrastructure/guards/jwt-auth.guard';
 
 class RegisterDto {
-  @IsString() @IsNotEmpty() nombre: string;
-  @IsEmail()                email: string;
-  @IsString() @MinLength(6) password: string;
-  @IsString() @IsNotEmpty() ci: string;
+  @IsString() @IsNotEmpty()  nombre: string;
+  @IsEmail()                 email: string;
+  @IsString() @MinLength(6)  password: string;
+  @IsString() @IsNotEmpty()  ci: string;
+  @IsString() @IsOptional()  titulo?: string;
 }
 
 class LoginDto {
@@ -24,7 +25,7 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.nombre, dto.email, dto.password, dto.ci);
+    return this.authService.register(dto.nombre, dto.email, dto.password, dto.ci, dto.titulo);
   }
 
   @Post('login')

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from src.application.routes.monitor import router as monitor_router
-from src.infrastructure.docker_client import is_swarm_active
+from src.infrastructure.docker_client import is_swarm_active, get_stack_services
 from src.monitor_loop import monitor_loop
 
 load_dotenv()
@@ -39,9 +39,14 @@ app.include_router(monitor_router)
 @app.get("/health")
 def health():
     swarm = is_swarm_active()
+    stack_name = os.getenv("SWARM_STACK_NAME", "pdc")
+    try:
+        services_count = len(get_stack_services(stack_name)) if swarm else 0
+    except Exception:
+        services_count = 0
     return {
         "status": "ok",
         "service": "ms-monitor",
         "swarm_active": swarm,
-        "environment": os.getenv("ENVIRONMENT", "development"),
+        "services_count": services_count,
     }

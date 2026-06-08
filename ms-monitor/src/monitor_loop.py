@@ -4,6 +4,7 @@ from src.infrastructure import docker_client as dc
 from src.infrastructure.metrics_store import (
     update_metric, add_alert, get_config,
     increment_low_cpu_cycles, reset_low_cpu_cycles, EXCLUDED_SERVICES,
+    check_and_update_restart_count,
 )
 from src.domain.schemas.monitor import MetricInfo
 
@@ -70,18 +71,19 @@ def _run_one_cycle():
             add_alert(service_name, "service_down",
                       f"0/{replicas_desired} réplicas activas")
 
+        # Contar tareas fallidas (acumulado de por vida del servicio).
+        # Comparamos con el ciclo anterior para detectar nuevos reinicios.
+        all_tasks = service.tasks()
+        restart_count = sum(1 for t in all_tasks if t["Status"]["State"] == "failed")
+
         # Recopilar métricas de CPU/RAM de cada tarea corriendo
         cpu_values = []
         total_memory = 0.0
-        restart_count = 0
 
         for task in tasks:
             if task["Status"]["State"] != "running":
                 continue
-            container_status = task.get("Status", {}).get("ContainerStatus", {})
-            container_id = container_status.get("ContainerID", "")
-            restart_count += container_status.get("ExitCode", 0)  # aproximación
-
+            container_id = task.get("Status", {}).get("ContainerStatus", {}).get("ContainerID", "")
             if container_id:
                 stats = dc.get_container_stats(container_id)
                 if stats:
@@ -96,6 +98,11 @@ def _run_one_cycle():
             memory_mb=round(total_memory, 1),
             restart_count=restart_count,
         ))
+
+        # Alerta si hubo nuevos reinicios desde el último ciclo
+        if check_and_update_restart_count(service_name, restart_count):
+            add_alert(service_name, "container_restart",
+                      f"Tareas fallidas: {restart_count} (incremento detectado)")
 
         # No aplicar auto-scaling a servicios excluidos
         if service_name in EXCLUDED_SERVICES:

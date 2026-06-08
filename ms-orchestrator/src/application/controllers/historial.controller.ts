@@ -15,17 +15,15 @@ export class HistorialController {
     try {
       const res = await client.query(`
         SELECT
-          pc.id,
-          pc.numero_plan,
-          pc.nombre_docente,
+          pc.id                AS plan_id,
           pc.unidad_educativa,
-          pc.distrito,
-          pc.creado_en,
-          ae.literal   AS anio_literal,
-          ae.numero    AS anio_numero,
-          ne.nombre    AS nivel_nombre,
-          t.numero     AS trimestre_numero,
-          g.anio       AS gestion_anio
+          pc.creado_en         AS fecha,
+          pc.filename,
+          pc.download_url,
+          t.numero             AS trimestre,
+          g.anio               AS gestion_anio,
+          ae.literal           AS anio_literal,
+          ne.nombre            AS nivel_nombre
         FROM plan_curricular pc
         JOIN anio_escolaridad ae ON ae.id = pc.anio_escolaridad_id
         JOIN nivel_educativo  ne ON ne.id = ae.nivel_id

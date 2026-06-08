@@ -37,11 +37,19 @@ def list_services():
 
         image = spec.get("TaskTemplate", {}).get("ContainerSpec", {}).get("Image", "")
 
+        endpoint_ports = svc.attrs.get("Endpoint", {}).get("Ports", [])
+        ports = [
+            f"{p['PublishedPort']}:{p['TargetPort']}" if p.get("PublishedPort")
+            else str(p["TargetPort"])
+            for p in endpoint_ports
+        ]
+
         result.append(ServiceInfo(
             name=svc.name.replace(f"{STACK_NAME}_", ""),
             replicas_running=replicas_running,
             replicas_desired=replicas_desired,
             image=image,
+            ports=ports,
             tasks=task_infos,
         ))
     return result

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,7 +34,6 @@ const STEP_LABELS = ['Docente', 'Asignación', 'Materias', 'Materiales'];
 export default function GenerarWizard() {
   const user = useAppStore((s) => s.user);
   const updateCreditos = useAppStore((s) => s.updateCreditos);
-  const navigate = useNavigate();
 
   const [refData, setRefData] = useState<ReferenceData | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -87,7 +85,7 @@ export default function GenerarWizard() {
       };
     });
 
-  const selectedTrim: Trimestre | undefined = refData?.trimestres.find((t) => t.id === trimId);
+  const selectedTrim: Trimestre | undefined = refData?.trimestres?.find((t) => t.id === trimId);
 
   const handleSubmit = async () => {
     setSubmitting(true);

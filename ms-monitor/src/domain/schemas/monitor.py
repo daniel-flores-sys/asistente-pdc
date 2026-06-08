@@ -15,6 +15,7 @@ class ServiceInfo(BaseModel):
     replicas_running: int
     replicas_desired: int
     image: str
+    ports: list[str] = []
     tasks: list[TaskInfo] = []
 
 

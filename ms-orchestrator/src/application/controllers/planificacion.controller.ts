@@ -19,7 +19,7 @@ export class GenerarPDCDto {
   @IsString() @IsOptional() titulo_docente?: string;
   @IsString() @IsNotEmpty() unidad_educativa: string;
   @IsString() @IsNotEmpty() distrito: string;
-  @IsString() @IsNotEmpty() nombre_director: string;
+  @IsString() @IsOptional() nombre_director?: string;
 
   @IsInt() anio_escolaridad_id: number;
   @IsInt() trimestre_id: number;

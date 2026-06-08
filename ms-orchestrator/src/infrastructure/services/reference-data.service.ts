@@ -46,7 +46,7 @@ export class ReferenceDataService {
       ]);
 
       return {
-        niveles_educativos:   niveles.rows,
+        niveles:              niveles.rows,       // key esperada por el frontend
         anios_escolaridad:    anios.rows,
         areas_curriculares:   areas.rows,
         trimestres:           trimestres.rows,

@@ -11,6 +11,9 @@ _metrics: dict[str, MetricInfo] = {}
 # Contador para regla de scale-down: cuántos ciclos consecutivos por debajo del umbral
 _low_cpu_cycles: dict[str, int] = {}
 
+# Tracking de reinicios para detectar incrementos entre ciclos
+_prev_restart_counts: dict[str, int] = {}
+
 # Configuración mutable desde el endpoint PUT /monitor/config
 _config = ScaleConfig(
     scale_up_cpu_threshold=float(os.getenv("SCALE_UP_CPU_THRESHOLD", "70")),
@@ -67,3 +70,12 @@ def increment_low_cpu_cycles(service_name: str) -> int:
 
 def reset_low_cpu_cycles(service_name: str) -> None:
     _low_cpu_cycles.pop(service_name, None)
+
+
+def check_and_update_restart_count(service_name: str, new_count: int) -> bool:
+    """Devuelve True si el conteo de reinicios aumentó respecto al ciclo anterior."""
+    prev = _prev_restart_counts.get(service_name)
+    _prev_restart_counts[service_name] = new_count
+    if prev is None:
+        return False  # Primera ejecución: no alertar, solo establecer baseline
+    return new_count > prev

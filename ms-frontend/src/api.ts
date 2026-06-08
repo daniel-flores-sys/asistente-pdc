@@ -100,12 +100,32 @@ export interface HistorialItem {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-// Normaliza el token: el backend puede responder con access_token o token
-export const authLogin = (email: string, password: string) =>
-  api.post('/auth/login', { email, password }).then((r) => {
-    const d = r.data;
-    return { user: d.user, token: d.access_token ?? d.token };
+// Normaliza el token y obtiene el perfil completo vía /auth/me
+// El login devuelve `role` (inglés); el store espera `rol` (español)
+// El admin no tiene ci/titulo/creditos en la respuesta de login → los trae /auth/me
+export const authLogin = async (email: string, password: string) => {
+  const { data } = await api.post('/auth/login', { email, password });
+  const token: string = data.access_token ?? data.token;
+
+  // Llamar /auth/me con el token recién obtenido (aún no está en el store)
+  const me = await api.get('/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
   });
+  const raw = me.data;
+
+  const user = {
+    id: raw.id as number,
+    nombre: raw.nombre as string,
+    email: raw.email as string,
+    ci: (raw.ci ?? '') as string,
+    titulo: (raw.titulo ?? '') as string,
+    rol: (raw.rol ?? raw.role) as 'docente' | 'admin',
+    creditos: (raw.creditos ?? 0) as number,
+    activo: (raw.activo ?? true) as boolean,
+  };
+
+  return { user, token };
+};
 
 // Register devuelve solo el usuario creado — sin token; el flujo redirige a /login
 export const authRegister = (data: {

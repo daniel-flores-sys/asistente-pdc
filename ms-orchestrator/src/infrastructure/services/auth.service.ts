@@ -19,12 +19,12 @@ export class AuthService {
     private readonly usuarioService: UsuarioService,
   ) {}
 
-  async register(nombre: string, email: string, password: string, ci: string) {
+  async register(nombre: string, email: string, password: string, ci: string, titulo?: string) {
     const existing = await this.usuarioService.findByEmail(email);
     if (existing) throw new ConflictException('El email ya está registrado');
 
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = await this.usuarioService.create(nombre, email, hash, ci);
+    const user = await this.usuarioService.create(nombre, email, hash, ci, titulo);
     return { id: user.id, nombre: user.nombre, email: user.email, creditos: user.creditos };
   }
 

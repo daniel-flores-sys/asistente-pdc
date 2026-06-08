@@ -20,12 +20,12 @@ export class UsuarioService {
     return res.rows[0] ?? null;
   }
 
-  async create(nombre: string, email: string, passwordHash: string, ci: string) {
+  async create(nombre: string, email: string, passwordHash: string, ci: string, titulo?: string) {
     const res = await pool.query(
-      `INSERT INTO usuarios (nombre, email, password_hash, ci, creditos, activo)
-       VALUES ($1, $2, $3, $4, 0, true)
+      `INSERT INTO usuarios (nombre, email, password_hash, ci, titulo, creditos, activo)
+       VALUES ($1, $2, $3, $4, $5, 0, true)
        RETURNING id, nombre, email, creditos, creado_en`,
-      [nombre, email, passwordHash, ci],
+      [nombre, email, passwordHash, ci, titulo ?? null],
     );
     return res.rows[0];
   }

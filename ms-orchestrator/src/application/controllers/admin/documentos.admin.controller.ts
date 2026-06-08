@@ -1,15 +1,17 @@
 import {
-  Controller, All, Req, Res, Param,
-  UseGuards, HttpException, HttpStatus,
+  Controller, Get, Post, Delete,
+  Param, ParseIntPipe, Req, Res,
+  UseGuards, UseInterceptors, UploadedFile,
+  HttpException, HttpStatus,
 } from '@nestjs/common';
+import { FileInterceptor }   from '@nestjs/platform-express';
 import { ConfigService }     from '@nestjs/config';
 import { Request, Response } from 'express';
 import axios                 from 'axios';
+import FormData              from 'form-data';
 import { JwtAuthGuard }      from '../../../infrastructure/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../../infrastructure/guards/roles.guard';
 
-// Proxy transparente hacia ms-ingestion para gestión de documentos RAG.
-// Así el admin interactúa con un solo punto de entrada (ms-orchestrator).
 @Controller('api/admin/documentos')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -20,26 +22,53 @@ export class DocumentosAdminController {
     this.ingestionUrl = this.config.get<string>('INGESTION_URL') ?? 'http://ms-ingestion:8003';
   }
 
-  @All()
-  @All(':path(*)')
-  async proxy(@Req() req: Request, @Res() res: Response, @Param('path') path = '') {
+  @Get()
+  async list(@Res() res: Response) {
     try {
-      const target = `${this.ingestionUrl}/documentos/${path}`;
-      const upstream = await axios.request({
-        method:  req.method as any,
-        url:     target,
-        params:  req.query,
-        data:    req.body,
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
-        validateStatus: () => true,   // reenviar el status code del upstream
+      const upstream = await axios.get(`${this.ingestionUrl}/documentos`, {
+        timeout: 10000,
+        validateStatus: () => true,
       });
       return res.status(upstream.status).json(upstream.data);
     } catch (error) {
-      throw new HttpException(
-        { error: 'ms-ingestion no disponible', detalle: error.message },
-        HttpStatus.BAD_GATEWAY,
-      );
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
+    }
+  }
+
+  // Recibe multipart/form-data con el archivo, lo reenvía a ms-ingestion como multipart.
+  // multer guarda el archivo en memoria (buffer) para poder reenviarlo sin escribir en disco.
+  @Post()
+  @UseInterceptors(FileInterceptor('file', { storage: undefined }))
+  async upload(@UploadedFile() file: Express.Multer.File, @Res() res: Response) {
+    if (!file) {
+      throw new HttpException({ error: 'Se requiere un archivo (campo "file")' }, HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const form = new FormData();
+      form.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
+
+      const upstream = await axios.post(`${this.ingestionUrl}/ingest`, form, {
+        headers: form.getHeaders(),
+        timeout: 120000,    // indexación puede tardar en documentos grandes
+        validateStatus: () => true,
+      });
+      return res.status(upstream.status).json(upstream.data);
+    } catch (error) {
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
+    }
+  }
+
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    try {
+      const upstream = await axios.delete(`${this.ingestionUrl}/documentos/${id}`, {
+        timeout: 10000,
+        validateStatus: () => true,
+      });
+      return res.status(upstream.status).json(upstream.data);
+    } catch (error) {
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
     }
   }
 }

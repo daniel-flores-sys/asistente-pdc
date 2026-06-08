@@ -13,7 +13,7 @@ class UpdateConfigDto {
 }
 
 // Claves válidas para evitar escritura arbitraria en system_config
-const CLAVES_VALIDAS = new Set(['llm_params', 'rag_params', 'prompts']);
+const CLAVES_VALIDAS = new Set(['llm_params', 'rag_params', 'ingest_params', 'prompts']);
 
 @Controller('api/admin/config')
 @UseGuards(JwtAuthGuard, RolesGuard)

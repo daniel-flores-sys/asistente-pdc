@@ -43,10 +43,17 @@ CREATE TABLE area_curricular (
     UNIQUE (nivel_id, codigo)
 );
 
+-- Cada año de escolaridad tiene un objetivo holístico por trimestre.
+-- Las cuatro dimensiones corresponden al modelo SEP (Sistema Educativo Plurinacional).
 CREATE TABLE objetivo_holistico (
     id                  SERIAL PRIMARY KEY,
-    anio_escolaridad_id INTEGER NOT NULL UNIQUE REFERENCES anio_escolaridad(id),
-    descripcion         TEXT NOT NULL
+    anio_escolaridad_id INTEGER NOT NULL REFERENCES anio_escolaridad(id),
+    trimestre_num       SMALLINT NOT NULL,
+    ser                 TEXT NOT NULL,
+    saber               TEXT NOT NULL,
+    hacer               TEXT NOT NULL,
+    decidir             TEXT NOT NULL,
+    UNIQUE (anio_escolaridad_id, trimestre_num)
 );
 
 CREATE TABLE gestion (
@@ -129,6 +136,10 @@ CREATE TABLE plan_curricular (
     -- El PDC completo en formato JSON estructurado
     -- { areas: [{ nombre, codigo, semanas: [{ practica, teoria, valoracion... }] }] }
     contenido           JSONB,
+
+    -- Guardados por ms-orchestrator tras recibir la respuesta de ms-doc-processor
+    filename            TEXT,
+    download_url        TEXT,
 
     creado_en           TIMESTAMPTZ DEFAULT NOW(),
 
