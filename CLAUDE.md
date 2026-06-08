@@ -280,6 +280,30 @@ pnpm run build        # ejecutar script build
 
 ---
 
+## DOCUMENTACIÓN — OBLIGATORIA AL MODIFICAR MICROSERVICIOS
+
+**Regla:** Cualquier cambio en un microservicio que afecte su interfaz, dependencias, endpoints, esquema o comportamiento **debe reflejarse en el archivo correspondiente de `docs/ms-docs/`**.
+
+| Microservicio | Archivo de documentación |
+|---|---|
+| ms-orchestrator | `docs/ms-docs/ms-orchestrator.md` |
+| ms-ai-generator | `docs/ms-docs/ms-ai-generator.md` |
+| ms-doc-processor | `docs/ms-docs/ms-doc-processor.md` |
+| ms-ingestion | `docs/ms-docs/ms-ingestion.md` |
+| ms-monitor | `docs/ms-docs/ms-monitor.md` |
+| ms-frontend | `docs/ms-docs/ms-frontend.md` |
+
+**Qué documentar cuando cambia:**
+- Nuevos endpoints o cambios en request/response → actualizar la tabla de endpoints del `.md`
+- Nuevas dependencias (npm/pip) → actualizar la sección de dependencias
+- Nuevas variables de entorno → actualizar la tabla de env vars y el `.env.example`
+- Cambios en el esquema PostgreSQL → actualizar `docs/ms-docs/` y revisar `01_schema.sql`
+- Cambios en el flujo entre servicios → actualizar `docs/processes/flujo-transversal.md`
+
+**Por qué:** Los otros chats que desarrollan microservicios en paralelo dependen de `docs/` como fuente de verdad del contrato de cada servicio. Si el código cambia pero la doc no, los demás servicios se programan contra una interfaz incorrecta.
+
+---
+
 ## SKILLS — USAR SIEMPRE QUE APLIQUEN
 
 Las skills son comandos especializados instalados en este entorno. Cuando una tarea coincide con una skill disponible, invocarla **antes** de cualquier otra acción.
