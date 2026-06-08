@@ -11,7 +11,9 @@ WORKDIR /app
 # Instalar dependencias primero para aprovechar el caché de Docker:
 # si package.json no cambia, esta capa no se reconstruye.
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# --ignore-scripts evita ERR_PNPM_IGNORED_BUILDS en pnpm v11
+# esbuild necesita su postinstall (descarga binario nativo), lo reconstruimos explícitamente
+RUN pnpm install --frozen-lockfile --ignore-scripts && pnpm rebuild esbuild
 
 # Copiar el resto del código y compilar (genera /app/dist)
 COPY . .
