@@ -6,7 +6,7 @@ import {
   IsString, IsNotEmpty, IsEmail, IsInt,
   IsBoolean, IsOptional, Min, MinLength,
 } from 'class-validator';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UsuarioService } from '../../../infrastructure/services/usuario.service';
 import { JwtAuthGuard }   from '../../../infrastructure/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../../infrastructure/guards/roles.guard';
