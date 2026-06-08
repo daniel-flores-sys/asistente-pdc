@@ -1,7 +1,7 @@
 # ─── Etapa 1: Builder ────────────────────────────────────────────────────────
 # Compilamos TypeScript → JavaScript en esta etapa.
 # Esta capa nunca llega a producción: solo usamos su output (dist/).
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # corepack viene incluido en Node 16.13+ — lo usamos para activar pnpm
 # sin necesidad de instalarlo por separado (más limpio y reproducible)
@@ -26,7 +26,7 @@ RUN pnpm run build
 # ─── Etapa 2: Producción ─────────────────────────────────────────────────────
 # Solo copiamos el JS compilado + dependencias de producción.
 # Sin TypeScript, sin ts-node-dev, sin código fuente → imagen mínima y segura.
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

@@ -1,6 +1,6 @@
 # ── Stage 1: Build ──────────────────────────────────────────────────────────
 # Compila la app React en archivos estáticos optimizados.
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # corepack viene incluido en Node 16.13+ — lo usamos para activar pnpm
 # sin necesidad de instalarlo por separado (más limpio y reproducible)
