@@ -114,6 +114,7 @@ jobs:
           context: ./ms-frontend
           file: ./ms-frontend/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:${{ github.sha }}

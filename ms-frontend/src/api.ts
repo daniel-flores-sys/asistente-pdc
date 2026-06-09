@@ -100,6 +100,8 @@ export interface HistorialItem {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+export const API_VERSION = '2';
+
 // Normaliza el token y obtiene el perfil completo vía /auth/me
 // El login devuelve `role` (inglés); el store espera `rol` (español)
 // El admin no tiene ci/titulo/creditos en la respuesta de login → los trae /auth/me
