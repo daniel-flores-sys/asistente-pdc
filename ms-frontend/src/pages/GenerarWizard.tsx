@@ -281,7 +281,7 @@ export default function GenerarWizard() {
                     <SelectValue placeholder="Seleccionar año..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {refData.anios_escolaridad.map((ae) => (
+                    {(refData.anios_escolaridad ?? []).map((ae) => (
                       <SelectItem key={ae.id} value={String(ae.id)}>
                         {ae.literal} — {ae.nivel_nombre}
                       </SelectItem>
@@ -296,7 +296,7 @@ export default function GenerarWizard() {
                     <SelectValue placeholder="Seleccionar trimestre..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {refData.trimestres.map((t) => (
+                    {(refData.trimestres ?? []).map((t) => (
                       <SelectItem key={t.id} value={String(t.id)}>
                         Trimestre {t.numero} — {t.gestion_anio} ({t.fecha_inicio} al {t.fecha_fin})
                       </SelectItem>
@@ -324,9 +324,9 @@ export default function GenerarWizard() {
               <p className="text-sm text-muted-foreground">Selecciona las áreas y los temas del mes.</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {refData.areas_curriculares.map((area) => {
+              {(refData.areas_curriculares ?? []).map((area) => {
                 const checked = areasSelected.includes(area.id);
-                const temasFiltrados = refData.temas_mes.filter(
+                const temasFiltrados = (refData.temas_mes ?? []).filter(
                   (t) =>
                     t.area_curricular_id === area.id &&
                     t.anio_escolaridad_id === anioId &&
