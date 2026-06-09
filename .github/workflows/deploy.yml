@@ -221,3 +221,10 @@ jobs:
       - name: Verificar estado del Swarm
         run: |
           ssh server-245 "docker service ls"
+
+      # Limpieza de imágenes antiguas en el servidor
+      # Elimina imágenes sin tag activo que ya no usa ningún contenedor corriendo
+      # Previene que el disco se llene con acumulación de imágenes SHA por cada CI run
+      - name: Limpiar imágenes antiguas en servidor
+        run: |
+          ssh server-245 "docker image prune -a --filter 'until=24h' -f || true"
