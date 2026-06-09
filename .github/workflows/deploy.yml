@@ -168,17 +168,19 @@ jobs:
       # Rolling updates — parallelism=1 → zero-downtime
       # Si el nuevo contenedor falla el healthcheck, Swarm revierte automáticamente
 
+      # Usar el tag SHA (no :latest) garantiza que Swarm siempre detecta imagen nueva
+      # y fuerza el pull + restart del task, sin depender de comparación de digests
       - name: Rolling update — ms-frontend
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:${{ github.sha }} \
             --with-registry-auth \
             pdc_ms-frontend"
 
       - name: Rolling update — ms-orchestrator
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:${{ github.sha }} \
             --env-add JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --env-add ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
             --with-registry-auth \
@@ -187,14 +189,14 @@ jobs:
       - name: Rolling update — ms-ai-generator
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }} \
             --with-registry-auth \
             pdc_ms-ai-generator"
 
       - name: Rolling update — ms-doc-processor
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:${{ github.sha }} \
             --env-add AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
             --env-add AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
             --env-add AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }} \
@@ -205,14 +207,14 @@ jobs:
       - name: Rolling update — ms-ingestion
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:${{ github.sha }} \
             --with-registry-auth \
             pdc_ms-ingestion"
 
       - name: Rolling update — ms-monitor
         run: |
           ssh server-245 "docker service update \
-            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:latest \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:${{ github.sha }} \
             --with-registry-auth \
             pdc_ms-monitor"
 
