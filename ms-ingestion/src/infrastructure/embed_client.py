@@ -1,7 +1,7 @@
 """
-Cliente de embeddings con fallback.
-Estrategia: Ollama (nomic-embed-text) → sentence-transformers local.
-El fallback local se activa cuando OLLAMA_URL está vacío o Ollama no responde.
+Cliente de embeddings.
+Usa Ollama (nomic-embed-text). Si no está disponible, lanza RuntimeError explícito.
+sentence-transformers fue eliminado para mantener la imagen liviana (~800 MB menos).
 """
 
 import os
@@ -43,9 +43,7 @@ def _embed_via_ollama(texts: list[str]) -> list[list[float]]:
 
 
 def _embed_local(texts: list[str]) -> list[list[float]]:
-    """Genera embeddings con sentence-transformers (all-MiniLM-L6-v2, 384 dims)."""
-    global _local_model
-    if _local_model is None:
-        from sentence_transformers import SentenceTransformer
-        _local_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _local_model.encode(texts).tolist()
+    raise RuntimeError(
+        "Ollama no disponible y el fallback local fue eliminado. "
+        "Verificá que OLLAMA_URL esté configurado y Ollama responda."
+    )
