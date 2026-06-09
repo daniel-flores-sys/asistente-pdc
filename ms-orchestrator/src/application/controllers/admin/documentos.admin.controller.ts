@@ -1,12 +1,12 @@
 import {
   Controller, Get, Post, Delete,
-  Param, ParseIntPipe, Req, Res,
+  Param, ParseIntPipe, Res,
   UseGuards, UseInterceptors, UploadedFile,
   HttpException, HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor }   from '@nestjs/platform-express';
 import { ConfigService }     from '@nestjs/config';
-import { Request, Response } from 'express';
+import { Response }          from 'express';
 import axios                 from 'axios';
 import FormData              from 'form-data';
 import { JwtAuthGuard }      from '../../../infrastructure/guards/jwt-auth.guard';
@@ -25,21 +25,21 @@ export class DocumentosAdminController {
   @Get()
   async list(@Res() res: Response) {
     try {
-      const upstream = await axios.get(`${this.ingestionUrl}/documentos`, {
+      const upstream = await axios.get(`${this.ingestionUrl}/docs`, {
         timeout: 10000,
         validateStatus: () => true,
       });
       return res.status(upstream.status).json(upstream.data);
-    } catch (error) {
-      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: msg }, HttpStatus.BAD_GATEWAY);
     }
   }
 
-  // Recibe multipart/form-data con el archivo, lo reenvía a ms-ingestion como multipart.
-  // multer guarda el archivo en memoria (buffer) para poder reenviarlo sin escribir en disco.
+  // multer almacena el archivo en memoria (buffer) para reenviarlo como multipart a ms-ingestion
   @Post()
   @UseInterceptors(FileInterceptor('file', { storage: undefined }))
-  async upload(@UploadedFile() file: Express.Multer.File, @Res() res: Response) {
+  async upload(@UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string } | undefined, @Res() res: Response) {
     if (!file) {
       throw new HttpException({ error: 'Se requiere un archivo (campo "file")' }, HttpStatus.BAD_REQUEST);
     }
@@ -50,25 +50,27 @@ export class DocumentosAdminController {
 
       const upstream = await axios.post(`${this.ingestionUrl}/ingest`, form, {
         headers: form.getHeaders(),
-        timeout: 120000,    // indexación puede tardar en documentos grandes
+        timeout: 120000,
         validateStatus: () => true,
       });
       return res.status(upstream.status).json(upstream.data);
-    } catch (error) {
-      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: msg }, HttpStatus.BAD_GATEWAY);
     }
   }
 
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     try {
-      const upstream = await axios.delete(`${this.ingestionUrl}/documentos/${id}`, {
+      const upstream = await axios.delete(`${this.ingestionUrl}/docs/${id}`, {
         timeout: 10000,
         validateStatus: () => true,
       });
       return res.status(upstream.status).json(upstream.data);
-    } catch (error) {
-      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: error.message }, HttpStatus.BAD_GATEWAY);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new HttpException({ error: 'ms-ingestion no disponible', detalle: msg }, HttpStatus.BAD_GATEWAY);
     }
   }
 }

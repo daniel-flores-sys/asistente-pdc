@@ -35,3 +35,6 @@ informe/img/
 /.claude/
 /docs/.obsidian/
 skills-lock.json
+
+# Logs
+/logs-deploys/

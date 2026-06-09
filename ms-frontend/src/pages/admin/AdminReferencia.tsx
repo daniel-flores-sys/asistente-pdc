@@ -25,11 +25,11 @@ import {
 type Row = Record<string, string | number>;
 
 const TABS = [
-  { key: 'niveles', label: 'Niveles', fields: ['nombre'] },
-  { key: 'anios-escolaridad', label: 'Años de Escolaridad', fields: ['literal', 'nivel_id', 'numero'] },
-  { key: 'areas-curriculares', label: 'Áreas Curriculares', fields: ['nombre', 'codigo', 'nivel_id'] },
-  { key: 'temas-mensuales', label: 'Temas Mensuales', fields: ['titulo', 'semana_num', 'trimestre_num'] },
-  { key: 'objetivos-holisticos', label: 'Objetivos Holísticos', fields: ['descripcion', 'tipo'] },
+  { key: 'niveles',   label: 'Niveles',             fields: ['nombre'] },
+  { key: 'anios',     label: 'Años de Escolaridad', fields: ['literal', 'nivel_id', 'numero'] },
+  { key: 'areas',     label: 'Áreas Curriculares',  fields: ['nombre', 'codigo', 'nivel_id'] },
+  { key: 'temas',     label: 'Temas Mensuales',     fields: ['titulo', 'semana_num', 'trimestre_num'] },
+  { key: 'objetivos', label: 'Objetivos Holísticos', fields: ['ser', 'saber', 'hacer', 'decidir'] },
 ];
 
 function ResourceTab({ recurso, fields }: { recurso: string; fields: string[] }) {

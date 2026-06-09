@@ -25,7 +25,7 @@ export default function Login() {
     try {
       const { user, token } = await authLogin(email, password);
       setAuth(user, token);
-      navigate('/generar');
+      navigate(user.rol === 'admin' ? '/admin' : '/generar');
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Credenciales incorrectas');
     } finally {

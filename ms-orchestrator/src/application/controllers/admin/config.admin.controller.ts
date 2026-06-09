@@ -1,6 +1,6 @@
 import {
   Controller, Get, Put, Body,
-  Param, UseGuards,
+  Param, UseGuards, NotFoundException,
 } from '@nestjs/common';
 import { IsNotEmpty } from 'class-validator';
 import { pool }              from '../../../infrastructure/db';
@@ -24,6 +24,15 @@ export class ConfigAdminController {
   async list() {
     const res = await pool.query('SELECT clave, valor, actualizado_en FROM system_config ORDER BY clave');
     return res.rows;
+  }
+
+  @Get(':clave')
+  async getOne(@Param('clave') clave: string) {
+    const res = await pool.query(
+      'SELECT valor FROM system_config WHERE clave = $1',
+      [clave],
+    );
+    return res.rows[0]?.valor ?? null;
   }
 
   @Put(':clave')
