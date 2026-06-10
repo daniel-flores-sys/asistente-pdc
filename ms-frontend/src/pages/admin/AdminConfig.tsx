@@ -23,10 +23,11 @@ function useConfigSection<T>(clave: string, defaults: T) {
 
   useEffect(() => {
     adminGetConfig(clave)
-      .then((v) => { if (v != null) setData(v); })
-      .catch(() => {/* usa defaults si no hay config guardada */})
+      // Merge con defaults: si el backend retorna objeto parcial, los campos faltantes vienen de defaults
+      .then((v) => { if (v != null && typeof v === 'object') setData({ ...defaults, ...v }); })
+      .catch(() => {/* usa defaults si no hay config o hay error */})
       .finally(() => setLoading(false));
-  }, [clave]);
+  }, [clave]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async () => {
     setSaving(true);
@@ -178,12 +179,12 @@ export default function AdminConfig() {
                     <Label>System Prompt</Label>
                     <p className="text-xs text-muted-foreground">
                       Se inyecta como rol "system" antes del request al LLM.
-                      {' '}{prompts.data.system_prompt.length} caracteres.
+                      {' '}{(prompts.data.system_prompt ?? '').length} caracteres.
                     </p>
                     <div className="border rounded-md overflow-hidden h-52">
                       <Editor
                         defaultLanguage="markdown"
-                        value={prompts.data.system_prompt}
+                        value={prompts.data.system_prompt ?? ''}
                         onChange={(v) => prompts.setData((p) => ({ ...p, system_prompt: v ?? '' }))}
                         options={{
                           minimap: { enabled: false },
@@ -205,7 +206,7 @@ export default function AdminConfig() {
                     <div className="border rounded-md overflow-hidden h-40">
                       <Editor
                         defaultLanguage="markdown"
-                        value={prompts.data.user_template}
+                        value={prompts.data.user_template ?? ''}
                         onChange={(v) => prompts.setData((p) => ({ ...p, user_template: v ?? '' }))}
                         options={{
                           minimap: { enabled: false },
