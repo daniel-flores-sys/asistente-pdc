@@ -104,9 +104,11 @@ Resultado
 ### /admin/monitor
 - Tarjetas con estado de cada servicio (nombre, réplicas activas/deseadas, estado)
 - Gráfico de CPU/RAM en tiempo real (polling cada 30s a `/api/admin/monitor/metrics`)
-- Controles de scaling: slider de réplicas por servicio
+- Controles de scaling: botones +/- por servicio; botón − deshabilitado en `config.min_replicas`
 - Lista de alertas recientes (scale_up, scale_down, contenedor reiniciado)
 - Configuración de umbrales de auto-scaling
+- **Nota de robustez**: `load()` aplica `Array.isArray` guards antes de actualizar estado.
+  Si ms-monitor devuelve dato inesperado (reinicio, 502), las listas quedan en `[]` en vez de crashear.
 
 ---
 
