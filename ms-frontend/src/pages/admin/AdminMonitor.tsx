@@ -100,10 +100,12 @@ export default function AdminMonitor() {
         adminGetMonitorAlerts(),
         adminGetMonitorConfig(),
       ]);
-      setServices(svc);
-      setMetrics(met);
-      setAlerts(ale);
-      setConfig(cfg);
+      // Guards defensivos: si el API devuelve un no-array (error 200, restart de ms-monitor),
+      // las llamadas a .map()/.filter()/.slice() en el render no deben colapsar la página.
+      setServices(Array.isArray(svc) ? svc : []);
+      setMetrics(Array.isArray(met) ? met : []);
+      setAlerts(Array.isArray(ale) ? ale : []);
+      if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) setConfig((prev) => ({ ...prev, ...cfg }));
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Error al conectar con ms-monitor');
     } finally {
@@ -201,7 +203,7 @@ export default function AdminMonitor() {
                           <Button
                             variant="outline" size="icon" className="w-7 h-7"
                             onClick={() => handleScale(svc.name, svc.replicas_desired, -1)}
-                            disabled={scaling[svc.name] || svc.replicas_desired <= 0}
+                            disabled={scaling[svc.name] || svc.replicas_desired <= config.min_replicas}
                           >
                             <Minus className="w-3 h-3" />
                           </Button>

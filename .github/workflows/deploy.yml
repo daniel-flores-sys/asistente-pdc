@@ -215,6 +215,7 @@ jobs:
         run: |
           ssh server-245 "docker service update \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:${{ github.sha }} \
+            --user 1000:988 \
             --with-registry-auth \
             pdc_ms-monitor"
 

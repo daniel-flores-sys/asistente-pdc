@@ -29,7 +29,7 @@ const TABS = [
   { key: 'anios',     label: 'Años de Escolaridad', fields: ['literal', 'nivel_id', 'numero'] },
   { key: 'areas',     label: 'Áreas Curriculares',  fields: ['nombre', 'codigo', 'nivel_id'] },
   { key: 'temas',     label: 'Temas Mensuales',     fields: ['titulo', 'semana_num', 'trimestre_num'] },
-  { key: 'objetivos', label: 'Objetivos Holísticos', fields: ['ser', 'saber', 'hacer', 'decidir'] },
+  { key: 'objetivos', label: 'Objetivos Holísticos', fields: ['anio_escolaridad_id', 'descripcion'] },
 ];
 
 function ResourceTab({ recurso, fields }: { recurso: string; fields: string[] }) {

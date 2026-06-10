@@ -24,6 +24,9 @@ app = FastAPI(
     description="Ingestión de documentos curriculares (PDF/DOCX/TXT) → ChromaDB para el pipeline RAG",
     version="2.0.0",
     lifespan=lifespan,
+    # /docs está reservado para la ruta de lista de documentos; Swagger va a /swagger
+    docs_url="/swagger",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(

@@ -126,7 +126,8 @@ PUT /monitor/config
 ## Flujo del loop de monitoreo
 
 ```
-asyncio background task — se ejecuta cada 30 segundos:
+asyncio background task — se ejecuta cada 30 segundos vía asyncio.to_thread(_run_one_cycle)
+(to_thread evita bloquear el event loop de uvicorn durante llamadas síncronas al Docker SDK):
 
 1. docker_client.services.list(filters={"label": "com.docker.stack.namespace=pdc"})
    → Lista servicios del stack PDC
