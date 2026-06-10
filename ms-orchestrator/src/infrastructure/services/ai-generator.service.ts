@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { pool } from '../db';
@@ -21,7 +21,7 @@ export class AiGeneratorService {
 
     // Paso 1: ms-ai-generator construye el contenido PDC y lo persiste en plan_curricular
     const genRes = await axios.post(`${this.aiUrl}/generate`, aiPayload, {
-      timeout: 240000,  // Gemma local en CPU puede tardar varios minutos en la primera generacion
+      timeout: 120000,  // Mantiene la demo responsiva: si Ollama no responde, el AI cae al mock fallback
     });
     const { plan_id } = genRes.data;
 
@@ -52,26 +52,48 @@ export class AiGeneratorService {
     const anioId = Number(payload.anio_escolaridad_id);
     const trimestreId = Number(payload.trimestre_id);
 
+    if (!Array.isArray(areaIds) || areaIds.length === 0) {
+      throw new BadRequestException('Debe seleccionar al menos un area curricular');
+    }
+
     const client = await pool.connect();
     try {
+      const anioRes = await client.query(
+        'SELECT id, nivel_id, literal FROM anio_escolaridad WHERE id = $1',
+        [anioId],
+      );
+      const anio = anioRes.rows[0];
+      if (!anio) {
+        throw new BadRequestException(`No existe el anio de escolaridad con id ${anioId}`);
+      }
+
       const trimestreRes = await client.query(
         'SELECT numero FROM trimestre WHERE id = $1',
         [trimestreId],
       );
       const trimestreNum = trimestreRes.rows[0]?.numero;
       if (!trimestreNum) {
-        throw new Error(`No existe el trimestre con id ${trimestreId}`);
+        throw new BadRequestException(`No existe el trimestre con id ${trimestreId}`);
       }
 
       const areasRes = await client.query(
         `
-        SELECT id, nombre, codigo
+        SELECT id, nombre, codigo, nivel_id
         FROM area_curricular
         WHERE id = ANY($1::int[])
         ORDER BY id
         `,
         [areaIds],
       );
+      if (areasRes.rows.length !== areaIds.length) {
+        throw new BadRequestException('Una o mas areas seleccionadas no existen');
+      }
+      const invalidAreas = areasRes.rows.filter((row) => row.nivel_id !== anio.nivel_id);
+      if (invalidAreas.length > 0) {
+        throw new BadRequestException(
+          'Las areas seleccionadas no corresponden al nivel del anio de escolaridad elegido',
+        );
+      }
 
       const topicIds = Object.values(selectedTopics ?? {}).flat();
       const temasRes = await client.query(
@@ -98,7 +120,9 @@ export class AiGeneratorService {
 
       const objetivo = objetivoRes.rows[0];
       if (!objetivo) {
-        throw new Error('No existe objetivo holistico para el anio y trimestre seleccionados');
+        throw new BadRequestException(
+          'No existe objetivo holistico para el anio y trimestre seleccionados. Debes registrar ese dato semilla antes de generar.',
+        );
       }
 
       const temas: Record<string, Array<Record<string, unknown>>> = {};

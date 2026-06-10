@@ -38,3 +38,7 @@ skills-lock.json
 
 # Logs
 /logs-deploys/
+
+# CodeGraph local index
+.codegraph/
+.codegraph-*/

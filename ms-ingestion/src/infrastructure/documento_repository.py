@@ -1,7 +1,6 @@
 """
 Repositorio de documentos indexados en PostgreSQL.
-Encapsula todas las operaciones SQL sobre la tabla documentos_indexados,
-siguiendo el principio SRP: este módulo solo sabe de persistencia, no de lógica.
+Encapsula todas las operaciones SQL sobre la tabla documentos_indexados.
 """
 
 from src.infrastructure.db import get_pool
@@ -13,27 +12,29 @@ async def insert_documento(
     chunks_generados: int,
     chroma_ids: list[str],
     subido_por: int = 1,
+    estado: str = "indexado",
 ) -> int:
-    """Registra un documento recién indexado. Retorna el id generado."""
+    """Registra un documento y retorna el id generado."""
     pool = get_pool()
     row = await pool.fetchrow(
         """
         INSERT INTO documentos_indexados
             (nombre_archivo, tipo, chunks_generados, chroma_ids, estado, subido_por, creado_en)
-        VALUES ($1, $2, $3, $4::TEXT[], 'indexado', $5, NOW())
+        VALUES ($1, $2, $3, $4::TEXT[], $5, $6, NOW())
         RETURNING id
         """,
         nombre_archivo,
         tipo,
         chunks_generados,
         chroma_ids,
+        estado,
         subido_por,
     )
     return row["id"]
 
 
 async def update_estado(doc_id: int, estado: str) -> None:
-    """Actualiza el campo estado de un documento (ej. 'eliminado', 'error')."""
+    """Actualiza el estado de un documento."""
     pool = get_pool()
     await pool.execute(
         "UPDATE documentos_indexados SET estado = $1 WHERE id = $2",

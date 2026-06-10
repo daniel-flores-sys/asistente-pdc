@@ -29,7 +29,7 @@ DB_NAME=genplan_db
 DB_USER=genplan_user
 DB_PASSWORD=genplan_pass
 CHROMA_HOST=chromadb
-CHROMA_PORT=8004
+CHROMA_PORT=8000
 CHROMA_COLLECTION=curriculum_pdc
 ```
 

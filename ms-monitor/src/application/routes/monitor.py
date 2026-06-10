@@ -1,5 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException
+from docker.errors import DockerException
 from src.domain.schemas.monitor import (
     ServiceInfo, TaskInfo, MetricInfo, AlertInfo,
     ScaleRequest, ScaleResponse, ScaleConfig,
@@ -17,7 +18,13 @@ STACK_NAME = os.getenv("SWARM_STACK_NAME", "pdc")
 
 @router.get("/services", response_model=list[ServiceInfo])
 def list_services():
-    services = dc.get_stack_services(STACK_NAME)
+    try:
+        services = dc.get_stack_services(STACK_NAME)
+    except DockerException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Docker no disponible para monitoreo: {exc}",
+        ) from exc
     result = []
     for svc in services:
         spec = svc.attrs.get("Spec", {})
@@ -84,7 +91,13 @@ def scale_service(request: ScaleRequest):
 
     # Obtener réplicas actuales
     full_name = f"{STACK_NAME}_{short_name}"
-    services = dc.get_stack_services(STACK_NAME)
+    try:
+        services = dc.get_stack_services(STACK_NAME)
+    except DockerException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Docker no disponible para escalado: {exc}",
+        ) from exc
     current_service = next(
         (s for s in services if s.name == full_name), None
     )

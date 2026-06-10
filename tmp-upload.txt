@@ -1,0 +1,1 @@
+Documento de prueba para ingestion y embeddings del sistema PDC. Contiene suficiente texto para dividir en chunks y validar el flujo de subida de documentos administrativos.

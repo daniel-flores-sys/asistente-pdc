@@ -23,7 +23,7 @@ Registra metadata en PostgreSQL para que el admin pueda ver y gestionar los docu
 PORT=8003
 ENVIRONMENT=development
 CHROMA_HOST=chromadb
-CHROMA_PORT=8004
+CHROMA_PORT=8000
 CHROMA_COLLECTION=curriculum_pdc
 DB_HOST=postgres
 DB_PORT=5432

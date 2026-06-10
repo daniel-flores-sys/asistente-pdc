@@ -76,6 +76,9 @@ export class PlanificacionController {
       const creditos_restantes = await this.usuarioService.decrementCreditos(req.user.sub);
       return { ...result, creditos_restantes };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         { error: 'Error al generar el PDC', detalle: error.message },
         HttpStatus.SERVICE_UNAVAILABLE,

@@ -11,6 +11,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _build_catalog_context(req: GenerateRequest) -> list[str]:
+    """
+    Construye contexto pedagogico base desde los catalogos ya seleccionados por el usuario.
+    Esto mantiene la generacion util incluso si Chroma aun no esta listo.
+    """
+    chunks: list[str] = []
+    temas = req.temas or {}
+
+    for area in req.areas:
+        temas_area = temas.get(str(area.id), [])
+        resumen_temas = "; ".join(
+            f"semana {tema.semana_num}: {tema.titulo}"
+            for tema in temas_area
+        ) or "sin temas mensuales registrados"
+        chunks.append(
+            f"Area curricular {area.nombre} ({area.codigo}). "
+            f"Ano de escolaridad {req.anio_escolaridad_id}. "
+            f"Trimestre {req.trimestre_id}. "
+            f"Temas base: {resumen_temas}."
+        )
+
+    if req.objetivo_holistico:
+        chunks.append(f"Objetivo holistico base: {req.objetivo_holistico}")
+
+    if req.contexto_social:
+        chunks.append(f"Contexto social reportado por el docente: {req.contexto_social}")
+
+    return chunks
+
+
 @router.post("/generate")
 def generate_pdc(req: GenerateRequest):
     """
@@ -35,6 +65,8 @@ def generate_pdc(req: GenerateRequest):
             f"trimestre {req.trimestre_id}"
         )
         rag_chunks = query_rag(rag_query, top_k=rag_top_k)
+        catalog_chunks = _build_catalog_context(req)
+        rag_chunks = [*catalog_chunks, *rag_chunks]
 
         # 3. Generar contenido con Ollama (o mock fallback)
         # model_dump() serializa los objetos Pydantic anidados a dicts/listas planas

@@ -50,7 +50,7 @@ services:
     image: chromadb/chroma:latest
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8004
+      - CHROMA_SERVER_HTTP_PORT=8000
     volumes:
       - chroma_data:/chroma/chroma
     networks:
@@ -83,7 +83,7 @@ services:
       - DB_USER=genplan_user
       - DB_PASSWORD=genplan_pass
       - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8004
+      - CHROMA_PORT=8000
       - CHROMA_COLLECTION=curriculum_pdc
     networks:
       - pdc-overlay
@@ -160,7 +160,7 @@ services:
       - PORT=8003
       - ENVIRONMENT=production
       - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8004
+      - CHROMA_PORT=8000
       - CHROMA_COLLECTION=curriculum_pdc
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -192,9 +192,9 @@ services:
       - MAX_REPLICAS=5
       - MIN_REPLICAS=1
       - EXCLUDED_SERVICES=ms-monitor,postgres,chromadb
-    # UID 1000 (appuser) + GID 988 (docker group del host server-245)
-    # GID 988 coincide con el grupo 'docker' del host para acceder al socket
-    user: "1000:988"
+    # Local (Docker Desktop): root evita problemas con permisos del docker.sock.
+    # Server-245 puede sobreescribir con MONITOR_USER=1000:988 si quiere mantener ese mapeo.
+    user: ${MONITOR_USER:-root}
     volumes:
       # Socket de Docker necesario para monitorear y escalar servicios Swarm
       - /var/run/docker.sock:/var/run/docker.sock

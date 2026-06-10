@@ -60,11 +60,22 @@ export interface TemaMes {
   descripcion: string;
 }
 
+export interface ObjetivoHolistico {
+  id: number;
+  anio_escolaridad_id: number;
+  trimestre_num: number;
+  ser: string;
+  saber: string;
+  hacer: string;
+  decidir: string;
+}
+
 export interface ReferenceData {
   anios_escolaridad: AnioEscolaridad[];
   areas_curriculares: AreaCurricular[];
   trimestres: Trimestre[];
   temas_mes: TemaMes[];
+  objetivos_holisticos: ObjetivoHolistico[];
 }
 
 export interface GeneratePayload {

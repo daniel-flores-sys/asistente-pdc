@@ -8,7 +8,7 @@ import { FileInterceptor }   from '@nestjs/platform-express';
 import { ConfigService }     from '@nestjs/config';
 import { Response }          from 'express';
 import axios                 from 'axios';
-import FormData              from 'form-data';
+import FormData = require('form-data');
 import { JwtAuthGuard }      from '../../../infrastructure/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../../infrastructure/guards/roles.guard';
 

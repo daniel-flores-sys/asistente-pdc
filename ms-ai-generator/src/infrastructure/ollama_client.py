@@ -124,7 +124,7 @@ def generate_with_ollama(req_data: dict, rag_chunks: list[str], config: dict) ->
     }
 
     try:
-        with httpx.Client(timeout=240.0) as client:
+        with httpx.Client(timeout=45.0) as client:
             response = client.post(f"{OLLAMA_URL}/api/generate", json=payload)
             response.raise_for_status()
             raw_response = response.json().get("response", "{}")

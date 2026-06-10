@@ -5,7 +5,7 @@ import chromadb
 logger = logging.getLogger(__name__)
 
 CHROMA_HOST       = os.getenv("CHROMA_HOST",       "chromadb")
-CHROMA_PORT       = int(os.getenv("CHROMA_PORT",   "8004"))
+CHROMA_PORT       = int(os.getenv("CHROMA_PORT",   "8000"))
 CHROMA_COLLECTION = os.getenv("CHROMA_COLLECTION", "curriculum_pdc")
 
 

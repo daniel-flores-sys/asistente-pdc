@@ -17,12 +17,16 @@ import {
 import { Separator } from '@/components/ui/separator';
 import {
   CheckCircle2,
+  Clock3,
   ChevronLeft,
   ChevronRight,
   Coins,
   Download,
   Loader2,
+  MapPin,
   RotateCcw,
+  Sparkles,
+  CalendarDays,
 } from 'lucide-react';
 import { getReferenceData, generatePDC, GenerateResult, ReferenceData, Trimestre } from '@/api';
 import { useAppStore } from '@/store/useAppStore';
@@ -64,12 +68,59 @@ export default function GenerarWizard() {
 
   const creditos = user?.creditos ?? 0;
   const sinCreditos = creditos === 0;
+  const temasElegidos = Object.values(temasSelected).reduce((total, arr) => total + arr.length, 0);
+  const selectedAnio = refData?.anios_escolaridad?.find((ae) => ae.id === anioId);
+  const selectedTrim: Trimestre | undefined = refData?.trimestres?.find((t) => t.id === trimId);
+  const selectedTrimNumero = selectedTrim?.numero ?? 0;
+  const aniosDisponibles = (refData?.anios_escolaridad ?? []).filter((anio) =>
+    (refData?.areas_curriculares ?? []).some((area) => area.nivel_id === anio.nivel_id),
+  );
+  const areasDisponibles = (refData?.areas_curriculares ?? []).filter(
+    (area) => !selectedAnio || area.nivel_id === selectedAnio.nivel_id,
+  );
+  const hasObjetivoHolistico = (refData?.objetivos_holisticos ?? []).some(
+    (objetivo) =>
+      objetivo.anio_escolaridad_id === anioId &&
+      objetivo.trimestre_num === selectedTrimNumero,
+  );
 
   useEffect(() => {
     getReferenceData()
       .then(setRefData)
       .catch((e) => setLoadError('No se pudieron cargar los datos: ' + e.message));
   }, []);
+
+  useEffect(() => {
+    if (anioId && !aniosDisponibles.some((anio) => anio.id === anioId)) {
+      setAnioId(0);
+    }
+  }, [anioId, aniosDisponibles]);
+
+  useEffect(() => {
+    const availableAreas = (refData?.areas_curriculares ?? []).filter(
+      (area) => !selectedAnio || area.nivel_id === selectedAnio.nivel_id,
+    );
+    setAreasSelected((prev) =>
+      prev.filter((areaId) => availableAreas.some((area) => area.id === areaId)),
+    );
+    setTemasSelected((prev) => {
+      const next: Record<number, number[]> = {};
+      for (const [areaId, temaIds] of Object.entries(prev)) {
+        const numericAreaId = Number(areaId);
+        if (!availableAreas.some((area) => area.id === numericAreaId)) continue;
+        next[numericAreaId] = temaIds.filter((temaId) =>
+          (refData?.temas_mes ?? []).some(
+            (tema) =>
+              tema.id === temaId &&
+              tema.area_curricular_id === numericAreaId &&
+              tema.anio_escolaridad_id === anioId &&
+              tema.trimestre_num === selectedTrimNumero,
+          ),
+        );
+      }
+      return next;
+    });
+  }, [anioId, selectedTrimNumero, refData, selectedAnio]);
 
   const toggleArea = (id: number) =>
     setAreasSelected((prev) =>
@@ -84,8 +135,6 @@ export default function GenerarWizard() {
         [areaId]: cur.includes(temaId) ? cur.filter((x) => x !== temaId) : [...cur, temaId],
       };
     });
-
-  const selectedTrim: Trimestre | undefined = refData?.trimestres?.find((t) => t.id === trimId);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -109,7 +158,7 @@ export default function GenerarWizard() {
       updateCreditos(res.creditos_restantes);
       setResult(res);
     } catch (e: any) {
-      setError('Error: ' + (e.response?.data?.detalle ?? e.message));
+      setError('Error: ' + (e.response?.data?.detalle ?? e.response?.data?.message ?? e.message));
     } finally {
       setSubmitting(false);
     }
@@ -183,27 +232,52 @@ export default function GenerarWizard() {
   // ── Wizard principal ───────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Cabecera con créditos */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Generar PDC</h1>
-          <p className="text-muted-foreground text-sm">Plan de Desarrollo Curricular</p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="rounded-xl border bg-card p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5" />
+              Flujo guiado de 4 pasos
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Generar PDC</h1>
+              <p className="text-muted-foreground text-sm md:text-base max-w-2xl">
+                Completa los datos del docente, selecciona tu asignación curricular y genera
+                tu planificación lista para descargar.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 md:min-w-[260px]">
+            <Badge variant={sinCreditos ? 'destructive' : 'secondary'} className="justify-start gap-1.5 px-3 py-2 text-sm">
+              <Coins className="w-3.5 h-3.5" />
+              {creditos} crédito{creditos !== 1 ? 's' : ''}
+            </Badge>
+            <Badge variant="outline" className="justify-start gap-1.5 px-3 py-2 text-sm">
+              <CalendarDays className="w-3.5 h-3.5" />
+              {selectedTrim ? `T${selectedTrim.numero}` : 'Trimestre'}
+            </Badge>
+            <Badge variant="outline" className="justify-start gap-1.5 px-3 py-2 text-sm">
+              <MapPin className="w-3.5 h-3.5" />
+              {unidadEducativa.trim() || 'Unidad educativa'}
+            </Badge>
+            <Badge variant="outline" className="justify-start gap-1.5 px-3 py-2 text-sm">
+              <Clock3 className="w-3.5 h-3.5" />
+              {temasElegidos} tema{temasElegidos !== 1 ? 's' : ''}
+            </Badge>
+          </div>
         </div>
-        <Badge variant={sinCreditos ? 'destructive' : 'secondary'} className="flex items-center gap-1.5 text-sm px-3 py-1">
-          <Coins className="w-3.5 h-3.5" />
-          {creditos} crédito{creditos !== 1 ? 's' : ''}
-        </Badge>
       </div>
 
       {/* Indicador de pasos */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2 overflow-hidden">
         {STEP_LABELS.map((label, i) => {
           const n = (i + 1) as Step;
           const active = step === n;
           const done = step > n;
           return (
-            <div key={n} className="flex items-center gap-1 flex-1 last:flex-none">
+            <div key={n} className="flex items-center gap-2 flex-1 last:flex-none min-w-0">
               <div className="flex flex-col items-center gap-1 min-w-0">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors
@@ -223,11 +297,13 @@ export default function GenerarWizard() {
         })}
       </div>
 
-      <Card>
+      <Card className="shadow-sm">
         {/* ── Paso 1: Datos del docente ─────────────────────────────────── */}
         {step === 1 && (
           <>
-            <CardHeader><CardTitle>Datos del Docente</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Datos del Docente</CardTitle>
+          </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2 space-y-1.5">
@@ -272,7 +348,9 @@ export default function GenerarWizard() {
         {/* ── Paso 2: Asignación ────────────────────────────────────────── */}
         {step === 2 && (
           <>
-            <CardHeader><CardTitle>Asignación</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Asignación</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Año de Escolaridad *</Label>
@@ -281,13 +359,18 @@ export default function GenerarWizard() {
                     <SelectValue placeholder="Seleccionar año..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {(refData.anios_escolaridad ?? []).map((ae) => (
+                    {aniosDisponibles.map((ae) => (
                       <SelectItem key={ae.id} value={String(ae.id)}>
                         {ae.literal} — {ae.nivel_nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {aniosDisponibles.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    No hay anos con areas curriculares disponibles.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Trimestre *</Label>
@@ -321,10 +404,20 @@ export default function GenerarWizard() {
           <>
             <CardHeader>
               <CardTitle>Materias y Temas</CardTitle>
-              <p className="text-sm text-muted-foreground">Selecciona las áreas y los temas del mes.</p>
+              <p className="text-sm text-muted-foreground">
+                Selecciona las áreas que vas a trabajar y marca los temas que quieres que
+                el sistema use como base.
+              </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {(refData.areas_curriculares ?? []).map((area) => {
+              {areasDisponibles.length === 0 && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    No hay areas curriculares para el nivel seleccionado.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {areasDisponibles.map((area) => {
                 const checked = areasSelected.includes(area.id);
                 const temasFiltrados = (refData.temas_mes ?? []).filter(
                   (t) =>
@@ -389,7 +482,9 @@ export default function GenerarWizard() {
         {/* ── Paso 4: Materiales y contexto ─────────────────────────────── */}
         {step === 4 && (
           <>
-            <CardHeader><CardTitle>Materiales y Contexto</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Materiales y Contexto</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="materiales">Materiales disponibles</Label>
@@ -421,6 +516,15 @@ export default function GenerarWizard() {
                 </Alert>
               )}
 
+              {!hasObjetivoHolistico && anioId && trimId && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Falta el objetivo holistico para este ano y trimestre. Registra ese dato
+                    semilla antes de generar el PDC.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
@@ -434,12 +538,12 @@ export default function GenerarWizard() {
                 <Button
                   className="flex-1"
                   onClick={handleSubmit}
-                  disabled={submitting || sinCreditos}
+                  disabled={submitting || sinCreditos || !hasObjetivoHolistico}
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                      Generando PDC… (30–90 s)
+                      Generando PDC… puede tardar hasta 2 minutos
                     </>
                   ) : (
                     'Generar PDC'
@@ -453,14 +557,13 @@ export default function GenerarWizard() {
 
       {/* Resumen visible en pasos 3 y 4 */}
       {(step === 3 || step === 4) && (
-        <Card className="bg-muted/40">
-          <CardContent className="py-3 px-4 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-            <span><strong>Docente:</strong> {tituloDocente} {nombreDocente}</span>
-            <span><strong>CI:</strong> {ciDocente}</span>
-            <span><strong>U.E.:</strong> {unidadEducativa}</span>
-            <span><strong>Áreas:</strong> {areasSelected.length} seleccionadas</span>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-muted/30 px-4 py-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+          <span><strong>Docente:</strong> {tituloDocente} {nombreDocente}</span>
+          <span><strong>CI:</strong> {ciDocente}</span>
+          <span><strong>U.E.:</strong> {unidadEducativa || 'Pendiente'}</span>
+          <span><strong>Áreas:</strong> {areasSelected.length} seleccionadas</span>
+          <span><strong>Temas:</strong> {temasElegidos} seleccionados</span>
+        </div>
       )}
     </div>
   );
