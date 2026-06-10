@@ -47,7 +47,9 @@ async def monitor_loop():
 
     while True:
         try:
-            _run_one_cycle()
+            # asyncio.to_thread evita bloquear el event loop de uvicorn durante
+            # las llamadas sincrónicas al Docker SDK (que pueden tardar 1-3 s)
+            await asyncio.to_thread(_run_one_cycle)
         except Exception as exc:
             add_alert("system", "monitor_error", str(exc))
         await asyncio.sleep(LOOP_INTERVAL)
