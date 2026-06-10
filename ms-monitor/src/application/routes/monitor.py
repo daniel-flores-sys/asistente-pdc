@@ -7,6 +7,7 @@ from src.domain.schemas.monitor import (
 from src.infrastructure import docker_client as dc
 from src.infrastructure.metrics_store import (
     get_metrics, get_alerts, get_config, update_config, EXCLUDED_SERVICES,
+    reset_low_cpu_cycles,
 )
 
 router = APIRouter(prefix="/monitor", tags=["monitor"])
@@ -92,6 +93,11 @@ def scale_service(request: ScaleRequest):
 
     old_replicas = current_service.attrs["Spec"]["Mode"]["Replicated"]["Replicas"]
     dc.scale_service(full_name, request.replicas)
+
+    # Escala manual → reset del contador de ciclos de bajo CPU para este servicio.
+    # Sin esto, si el servicio estaba idle, el auto-scaler revertía a 1 réplica en el
+    # siguiente ciclo (30 s) porque _low_cpu_cycles ya había acumulado los 10 ciclos.
+    reset_low_cpu_cycles(short_name)
 
     return ScaleResponse(
         service_name=short_name,
