@@ -117,7 +117,7 @@ POST /generate
    - Temas seleccionados por semana
    - Objetivo holístico
    - Instrucción: "Genera el contenido pedagógico de cada semana en JSON"
-4. POST Ollama /api/generate → espera respuesta JSON del LLM
+4. POST Ollama /api/generate - espera respuesta JSON del LLM (timeout 240s para Gemma local)
 5. Si Ollama no responde: usa mock_data.build_mock_pdc()
 6. UPDATE plan_curricular SET contenido = <json_generado>
 7. Retorna { plan_id, contenido }

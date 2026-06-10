@@ -190,7 +190,7 @@ src/
 1. `JwtAuthGuard` verifica el token JWT
 2. `UsuarioService.verificarCreditos(usuario_id)` — lanza 402 si creditos = 0
 3. Resolución de datos desde PG: objetivo_holistico, temas por área/trimestre seleccionados
-4. `AiGeneratorService.generate(payload)` → POST ms-ai-generator `/generate` (timeout 90s)
-5. `DocProcessorService.upload(plan_id)` → POST ms-doc-processor `/doc/{plan_id}/upload` (timeout 30s)
+3. `AiGeneratorService` resuelve desde PostgreSQL los IDs recibidos del frontend: areas completas, temas seleccionados y objetivo_holistico del anio/trimestre
+4. `AiGeneratorService` arma el contrato interno de `ms-ai-generator` y llama `POST /generate` con `{ areas, temas, objetivo_holistico, datos_docente }`
 6. `UsuarioService.descontarCredito(usuario_id)` — UPDATE creditos = creditos - 1
 7. Retorna `{ plan_id, download_url, filename, creditos_restantes }`
