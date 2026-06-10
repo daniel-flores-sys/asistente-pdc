@@ -192,9 +192,11 @@ services:
       - MAX_REPLICAS=5
       - MIN_REPLICAS=1
       - EXCLUDED_SERVICES=ms-monitor,postgres,chromadb
+    # UID 1000 (appuser) + GID 988 (docker group del host server-245)
+    # GID 988 coincide con el grupo 'docker' del host para acceder al socket
+    user: "1000:988"
     volumes:
       # Socket de Docker necesario para monitorear y escalar servicios Swarm
-      # :ro — lectura/escritura limitada solo a lo que expone el SDK de Docker
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - pdc-overlay
