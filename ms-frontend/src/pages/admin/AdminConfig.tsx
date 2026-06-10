@@ -23,8 +23,8 @@ function useConfigSection<T>(clave: string, defaults: T) {
 
   useEffect(() => {
     adminGetConfig(clave)
-      .then(setData)
-      .catch(() => {/* usa defaults */})
+      .then((v) => { if (v != null) setData(v); })
+      .catch(() => {/* usa defaults si no hay config guardada */})
       .finally(() => setLoading(false));
   }, [clave]);
 

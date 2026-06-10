@@ -12,7 +12,7 @@ class NombreDto      { @IsString() @IsNotEmpty() nombre: string; }
 class NivelAreaDto   { @IsString() @IsNotEmpty() nombre: string; @IsString() @IsNotEmpty() codigo: string; @IsInt() nivel_id: number; }
 class AnioDto        { @IsInt() nivel_id: number; @IsInt() numero: number; @IsString() @IsNotEmpty() literal: string; }
 class TemaDto        { @IsInt() area_curricular_id: number; @IsInt() anio_escolaridad_id: number; @IsInt() trimestre_num: number; @IsInt() semana_num: number; @IsString() @IsNotEmpty() titulo: string; @IsString() @IsOptional() descripcion?: string; }
-class ObjetivoDto    { @IsInt() anio_escolaridad_id: number; @IsInt() trimestre_num: number; @IsString() @IsNotEmpty() ser: string; @IsString() @IsNotEmpty() saber: string; @IsString() @IsNotEmpty() hacer: string; @IsString() @IsNotEmpty() decidir: string; }
+class ObjetivoDto    { @IsInt() anio_escolaridad_id: number; @IsString() @IsNotEmpty() descripcion: string; }
 
 @Controller('api/admin/referencia')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -103,16 +103,16 @@ export class ReferenciaAdminController {
 
   @Get('objetivos')
   async getObjetivos() {
-    const res = await pool.query('SELECT * FROM objetivo_holistico ORDER BY anio_escolaridad_id, trimestre_num');
+    const res = await pool.query('SELECT * FROM objetivo_holistico ORDER BY anio_escolaridad_id');
     return res.rows;
   }
 
   @Post('objetivos')
   async createObjetivo(@Body() dto: ObjetivoDto) {
     const res = await pool.query(
-      `INSERT INTO objetivo_holistico (anio_escolaridad_id, trimestre_num, ser, saber, hacer, decidir)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [dto.anio_escolaridad_id, dto.trimestre_num, dto.ser, dto.saber, dto.hacer, dto.decidir],
+      `INSERT INTO objetivo_holistico (anio_escolaridad_id, descripcion)
+       VALUES ($1, $2) RETURNING *`,
+      [dto.anio_escolaridad_id, dto.descripcion],
     );
     return res.rows[0];
   }
@@ -120,9 +120,8 @@ export class ReferenciaAdminController {
   @Put('objetivos/:id')
   async updateObjetivo(@Param('id', ParseIntPipe) id: number, @Body() dto: ObjetivoDto) {
     const res = await pool.query(
-      `UPDATE objetivo_holistico SET ser=$1, saber=$2, hacer=$3, decidir=$4
-       WHERE id=$5 RETURNING *`,
-      [dto.ser, dto.saber, dto.hacer, dto.decidir, id],
+      `UPDATE objetivo_holistico SET descripcion=$1 WHERE id=$2 RETURNING *`,
+      [dto.descripcion, id],
     );
     return res.rows[0];
   }

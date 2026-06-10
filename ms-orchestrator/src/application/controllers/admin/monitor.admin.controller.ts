@@ -1,5 +1,5 @@
 import {
-  Controller, All, Req, Res, Param,
+  Controller, All, Req, Res,
   UseGuards, HttpException, HttpStatus,
 } from '@nestjs/common';
 import { ConfigService }     from '@nestjs/config';
@@ -19,11 +19,13 @@ export class MonitorAdminController {
     this.monitorUrl = this.config.get<string>('MONITOR_URL') ?? 'http://ms-monitor:8002';
   }
 
-  @All()
-  @All(':path(*)')
-  async proxy(@Req() req: Request, @Res() res: Response, @Param('path') path = '') {
+  // @All(':path(*)') no captura paths con '/' en Express — se usa req.path en su lugar
+  @All('*')
+  async proxy(@Req() req: Request, @Res() res: Response) {
     try {
-      const target = `${this.monitorUrl}/${path}`;
+      // Extrae el sub-path después de /api/admin/monitor
+      const subPath = req.path.replace(/^\/api\/admin\/monitor\/?/, '');
+      const target = subPath ? `${this.monitorUrl}/monitor/${subPath}` : `${this.monitorUrl}/monitor`;
       const upstream = await axios.request({
         method:  req.method as any,
         url:     target,
@@ -34,9 +36,10 @@ export class MonitorAdminController {
         validateStatus: () => true,
       });
       return res.status(upstream.status).json(upstream.data);
-    } catch (error) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       throw new HttpException(
-        { error: 'ms-monitor no disponible', detalle: error.message },
+        { error: 'ms-monitor no disponible', detalle: msg },
         HttpStatus.BAD_GATEWAY,
       );
     }
