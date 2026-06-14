@@ -10,7 +10,7 @@ import uuid
 import chromadb
 
 CHROMA_HOST        = os.getenv("CHROMA_HOST",       "chromadb")
-CHROMA_PORT        = int(os.getenv("CHROMA_PORT",   "8004"))
+CHROMA_PORT        = int(os.getenv("CHROMA_PORT",   "8000"))
 DEFAULT_COLLECTION = os.getenv("CHROMA_COLLECTION", "curriculum_pdc")
 
 
