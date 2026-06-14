@@ -16,8 +16,8 @@ test('GenerarPDCDto rechaza payload sin nombre_docente', async () => {
     ci_docente: '1234567',
     unidad_educativa: 'UE Test',
     distrito: 'La Paz',
-    anio_escolaridad_id: 1,
-    trimestre_id: 1,
+    anio_escolaridad_id: '550e8400-e29b-41d4-a716-446655440001',
+    trimestre_id: '550e8400-e29b-41d4-a716-446655440002',
     areas_seleccionadas: [],
     temas_seleccionados: {},
   });
@@ -32,8 +32,8 @@ test('GenerarPDCDto acepta payload mínimo válido', async () => {
     ci_docente: '1234567',
     unidad_educativa: 'UE Test',
     distrito: 'La Paz',
-    anio_escolaridad_id: 1,
-    trimestre_id: 1,
+    anio_escolaridad_id: '550e8400-e29b-41d4-a716-446655440001',
+    trimestre_id: '550e8400-e29b-41d4-a716-446655440002',
     areas_seleccionadas: [],
     temas_seleccionados: {},
   });

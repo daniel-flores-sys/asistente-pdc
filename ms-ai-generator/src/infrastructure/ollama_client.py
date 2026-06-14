@@ -5,7 +5,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_URL   = os.environ["OLLAMA_URL"]               # falla explícito si no configurado
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 
 
@@ -98,6 +97,7 @@ def generate_with_ollama(req_data: dict, rag_chunks: list[str], config: dict) ->
     req_data: dict serializado de GenerateRequest (model_dump())
     Devuelve el dict contenido con la estructura PDCContenido.
     """
+    ollama_url  = os.environ["OLLAMA_URL"]
     llm_cfg     = config.get("llm_params", {})
     temperature = float(llm_cfg.get("temperature", 0.7))
     max_tokens  = int(llm_cfg.get("max_tokens",  4096))
@@ -118,7 +118,7 @@ def generate_with_ollama(req_data: dict, rag_chunks: list[str], config: dict) ->
     }
 
     with httpx.Client(timeout=240.0) as client:
-        response = client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+        response = client.post(f"{ollama_url}/api/generate", json=payload)
         response.raise_for_status()
         content_type = response.headers.get("content-type", "")
         if "application/json" not in content_type:
