@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Delete,
-  Param, ParseIntPipe, Res, Req,
+  Param, Res, Req,
   UseGuards, UseInterceptors, UploadedFile,
   HttpException, HttpStatus,
 } from '@nestjs/common';
@@ -73,7 +73,7 @@ export class DocumentosAdminController {
   }
 
   @Post(':id/reindex')
-  async reindex(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+  async reindex(@Param('id') id: string, @Res() res: Response) {
     try {
       const upstream = await axios.post(`${this.ingestionUrl}/docs/${id}/reindex`, {}, {
         timeout: 120000,
@@ -88,7 +88,7 @@ export class DocumentosAdminController {
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+  async remove(@Param('id') id: string, @Res() res: Response) {
     try {
       const upstream = await axios.delete(`${this.ingestionUrl}/docs/${id}`, {
         timeout: 10000,

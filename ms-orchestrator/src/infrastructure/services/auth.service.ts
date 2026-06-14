@@ -63,7 +63,7 @@ export class AuthService {
     throw new UnauthorizedException('Credenciales inválidas');
   }
 
-  async getMe(id: number, role: string) {
+  async getMe(id: string, role: string) {
     if (role === 'admin') {
       const res = await pool.query(
         'SELECT id, nombre, email, activo, creado_en FROM admins WHERE id = $1',
@@ -93,7 +93,7 @@ export class AuthService {
     console.log(`[bootstrap] Admin inicial creado: ${adminEmail}`);
   }
 
-  private sign(sub: number, email: string, role: string): string {
+  private sign(sub: string, email: string, role: string): string {
     return this.jwtService.sign({ sub, email, role });
   }
 }
