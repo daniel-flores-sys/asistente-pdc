@@ -1,0 +1,7 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --ignore-scripts
+# src/ y configs llegan montados como volúmenes
+CMD ["pnpm", "run", "dev"]

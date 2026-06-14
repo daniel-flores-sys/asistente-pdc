@@ -1,0 +1,237 @@
+version: '3.8'
+
+# ─── Docker Swarm — Stack PDC Bolivia ─────────────────────────────────────────
+# Para levantar localmente (Windows con Docker Desktop en modo Swarm):
+#
+#   docker build -t pdc-postgres:local       -f infra/postgres/Dockerfile infra/postgres/
+#   docker build -t pdc/ms-frontend:local    ms-frontend/
+#   docker build -t pdc/ms-orchestrator:local ms-orchestrator/
+#   docker build -t pdc/ms-ai-generator:local ms-ai-generator/
+#   docker build -t pdc/ms-doc-processor:local ms-doc-processor/
+#   docker build -t pdc/ms-ingestion:local   ms-ingestion/
+#   docker build -t pdc/ms-monitor:local     ms-monitor/
+#   docker stack deploy --resolve-image never -c docker-compose.yml pdc
+#
+# En producción (Server 1) usa imágenes de DockerHub — CI/CD las actualiza
+# automáticamente con rolling update al hacer push a 'main'.
+#
+# Sin Ollama configurado: ms-ai-generator usa mock_data (PDC de ejemplo)
+# Sin S3 configurado: ms-doc-processor sirve .docx por descarga directa
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # BASES DE DATOS
+  # Siempre 1 réplica — el estado persistente no se escala sin clustering dedicado
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  postgres:
+    image: ${REGISTRY:-pdc}/pdc-postgres:${IMAGE_TAG:-local}
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-genplan_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB:-genplan_db}
+      # El admin inicial se crea en ms-orchestrator al arrancar, no aquí
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      placement:
+        constraints:
+          # BD siempre en el manager para garantizar acceso al volumen persistente
+          - node.role == manager
+
+  chromadb:
+    image: chromadb/chroma:0.5.23   # pinned: compatible con client 0.5.3 en ms-ingestion/ms-ai-generator
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      placement:
+        constraints:
+          # Vector store junto al manager — comparte red interna con ms-ai-generator e ms-ingestion
+          - node.role == manager
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # MICROSERVICIOS DE LA APLICACIÓN
+  # 1 réplica base — auto-scaling vía ms-monitor según CPU
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  ms-ai-generator:
+    image: ${REGISTRY:-pdc}/ms-ai-generator:${IMAGE_TAG:-local}
+    environment:
+      - PORT=8000
+      - ENVIRONMENT=production
+      - OLLAMA_URL=${OLLAMA_URL:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=genplan_db
+      - DB_USER=${DB_USER:-genplan_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000   # chromadb ignora CHROMA_SERVER_HTTP_PORT y escucha en 8000
+      - CHROMA_COLLECTION=curriculum_pdc
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  ms-doc-processor:
+    image: ${REGISTRY:-pdc}/ms-doc-processor:${IMAGE_TAG:-local}
+    environment:
+      - PORT=8001
+      - ENVIRONMENT=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=genplan_db
+      - DB_USER=${DB_USER:-genplan_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - OUTPUT_DIR=./output
+      # S3 — si vacío, el servicio usa fallback de descarga directa
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_PRESIGNED_EXPIRY=3600
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  ms-orchestrator:
+    image: ${REGISTRY:-pdc}/ms-orchestrator:${IMAGE_TAG:-local}
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - AI_GENERATOR_URL=http://ms-ai-generator:8000
+      - DOC_PROCESSOR_URL=http://ms-doc-processor:8001
+      - DOC_PROCESSOR_PUBLIC_URL=http://localhost:8001
+      - INGESTION_URL=http://ms-ingestion:8003
+      - MONITOR_URL=http://ms-monitor:8002
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=genplan_db
+      - DB_USER=${DB_USER:-genplan_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=8h
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@pdc.edu.bo}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  ms-ingestion:
+    image: ${REGISTRY:-pdc}/ms-ingestion:${IMAGE_TAG:-local}
+    environment:
+      - PORT=8003
+      - ENVIRONMENT=production
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000   # chromadb ignora CHROMA_SERVER_HTTP_PORT y escucha en 8000
+      - CHROMA_COLLECTION=curriculum_pdc
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=genplan_db
+      - DB_USER=${DB_USER:-genplan_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - OLLAMA_URL=${OLLAMA_URL:-}
+      - EMBED_MODEL=nomic-embed-text
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  ms-monitor:
+    image: ${REGISTRY:-pdc}/ms-monitor:${IMAGE_TAG:-local}
+    environment:
+      - PORT=8002
+      - ENVIRONMENT=production
+      - SWARM_STACK_NAME=pdc
+      - SCALE_UP_CPU_THRESHOLD=70
+      - SCALE_DOWN_CPU_THRESHOLD=20
+      - SCALE_DOWN_DELAY_MINUTES=5
+      - MAX_REPLICAS=5
+      - MIN_REPLICAS=1
+      - EXCLUDED_SERVICES=ms-monitor,postgres,chromadb
+    # UID 1000 (appuser) + GID 988 (docker group del host server-245)
+    # GID 988 coincide con el grupo 'docker' del host para acceder al socket
+    user: "1000:988"
+    volumes:
+      # Socket de Docker necesario para monitorear y escalar servicios Swarm
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      placement:
+        constraints:
+          # OBLIGATORIO: el socket de Swarm solo funciona en el nodo manager
+          - node.role == manager
+
+  ms-frontend:
+    image: ${REGISTRY:-pdc}/ms-frontend:${IMAGE_TAG:-local}
+    ports:
+      # Solo el frontend expone un puerto al host — el resto es interno
+      - "3000:80"
+    networks:
+      - pdc-overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+volumes:
+  postgres_data:
+  chroma_data:
+
+networks:
+  # Red overlay privada entre todos los contenedores del stack
+  # attachable: permite conectar contenedores temporales para debugging
+  pdc-overlay:
+    driver: overlay
+    attachable: true

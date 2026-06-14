@@ -1,0 +1,357 @@
+name: CI/CD — Tests, Build, Push y Deploy en Swarm
+
+# ─── Cuándo corre este workflow ────────────────────────────────────────────────
+# Cada push a 'main' dispara tres fases en secuencia:
+#   FASE 1 — tests-*  : tests unitarios de cada microservicio (paralelo)
+#   FASE 2 — build-and-push : construye las 6 imágenes y las sube a DockerHub
+#                              solo si TODOS los tests de la fase 1 pasaron
+#   FASE 3 — deploy   : requiere aprobación manual en GitHub,
+#                        luego conecta al Swarm Manager vía SSH+ProxyJump y hace
+#                        rolling update de cada servicio con la imagen nueva
+on:
+  push:
+    branches: [main]
+
+# ─── Secrets requeridos en GitHub → Settings → Secrets and variables → Actions ─
+#   DOCKERHUB_USERNAME     : tu usuario de DockerHub  (danielfloressys)
+#   DOCKERHUB_TOKEN        : Access Token de DockerHub (no tu contraseña)
+#   SSH_PRIVATE_KEY_BASTION: clave privada ED25519/RSA para usrproxy@bastión
+#   SSH_PRIVATE_KEY_SERVER : clave privada ED25519/RSA para admin245@192.168.100.245
+#   AWS_ACCESS_KEY_ID      : credencial IAM para S3
+#   AWS_SECRET_ACCESS_KEY  : credencial IAM para S3
+#   AWS_S3_BUCKET          : nombre del bucket S3
+#   JWT_SECRET             : secret JWT mínimo 32 chars (generado con openssl rand -base64 32)
+#   ADMIN_PASSWORD         : contraseña del administrador inicial
+#
+# ─── Environment requerido en GitHub → Settings → Environments ──────────────
+#   Nombre: "production"
+#   Required reviewers: daniel-flores-sys
+
+jobs:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 1a — Tests ms-ai-generator (FastAPI + Python)
+  # ═══════════════════════════════════════════════════════════════════════════
+  test-ai-generator:
+    name: Tests — ms-ai-generator
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            ms-ai-generator/requirements.txt
+            ms-ai-generator/tests/requirements-test.txt
+
+      - name: Instalar dependencias
+        run: |
+          cd ms-ai-generator
+          pip install -r requirements.txt -r tests/requirements-test.txt
+
+      - name: Ejecutar tests
+        run: |
+          cd ms-ai-generator
+          python -m pytest tests/ -v --tb=short
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 1b — Tests ms-ingestion (FastAPI + Python)
+  # ═══════════════════════════════════════════════════════════════════════════
+  test-ingestion:
+    name: Tests — ms-ingestion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            ms-ingestion/requirements.txt
+            ms-ingestion/tests/requirements-test.txt
+
+      - name: Instalar dependencias
+        run: |
+          cd ms-ingestion
+          pip install -r requirements.txt -r tests/requirements-test.txt
+
+      - name: Ejecutar tests
+        run: |
+          cd ms-ingestion
+          python -m pytest tests/ -v --tb=short
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 1c — Tests ms-monitor (FastAPI + Python)
+  # ═══════════════════════════════════════════════════════════════════════════
+  test-monitor:
+    name: Tests — ms-monitor
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            ms-monitor/requirements.txt
+            ms-monitor/tests/requirements-test.txt
+
+      - name: Instalar dependencias
+        run: |
+          cd ms-monitor
+          pip install -r requirements.txt -r tests/requirements-test.txt
+
+      - name: Ejecutar tests
+        run: |
+          cd ms-monitor
+          python -m pytest tests/ -v --tb=short
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 1d — Tests ms-orchestrator (NestJS + TypeScript)
+  # ═══════════════════════════════════════════════════════════════════════════
+  test-orchestrator:
+    name: Tests — ms-orchestrator
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        # pnpm 11 requiere Node >=22; el job usa Node 20, fijamos a la rama 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Instalar dependencias
+        # --frozen-lockfile: falla si pnpm-lock.yaml no coincide con package.json
+        # --ignore-scripts: evita el prompt interactivo de pnpm v11 para scripts nativos
+        run: cd ms-orchestrator && pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Ejecutar tests
+        # ts-node está disponible como dep transitiva de ts-node-dev (ya en lockfile)
+        # node:test es el runner built-in de Node 20, sin necesidad de Jest
+        run: cd ms-orchestrator && pnpm test
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 2 — Construir las imágenes y publicarlas en DockerHub
+  #          Solo corre si TODOS los tests de la Fase 1 pasaron
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-and-push:
+    name: Build y Push a DockerHub
+    runs-on: ubuntu-latest
+    needs: [test-ai-generator, test-ingestion, test-monitor, test-orchestrator]
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Login en DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Cada servicio recibe dos tags:
+      #   :latest  → Swarm siempre jala la versión más reciente
+      #   :sha     → trazabilidad exacta (saber qué commit está corriendo)
+
+      - name: Build y push postgres (imagen con schema)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-doc-processor/infra/postgres
+          file: ./ms-doc-processor/infra/postgres/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdc-postgres:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdc-postgres:${{ github.sha }}
+
+      - name: Build y push ms-orchestrator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-orchestrator
+          file: ./ms-orchestrator/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:${{ github.sha }}
+
+      - name: Build y push ms-ai-generator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-ai-generator
+          file: ./ms-ai-generator/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }}
+
+      - name: Build y push ms-doc-processor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-doc-processor
+          file: ./ms-doc-processor/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:${{ github.sha }}
+
+      - name: Build y push ms-ingestion
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-ingestion
+          file: ./ms-ingestion/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:${{ github.sha }}
+
+      - name: Build y push ms-monitor
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-monitor
+          file: ./ms-monitor/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:${{ github.sha }}
+
+      - name: Build y push ms-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ms-frontend
+          file: ./ms-frontend/Dockerfile
+          push: true
+          no-cache: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:${{ github.sha }}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FASE 3 — Desplegar en Docker Swarm (requiere aprobación manual)
+  # ═══════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: Deploy en Docker Swarm (requiere aprobación)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+
+      - name: Configurar SSH con ProxyJump
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "${{ secrets.SSH_PRIVATE_KEY_BASTION }}" > ~/.ssh/id_bastion
+          chmod 600 ~/.ssh/id_bastion
+
+          echo "${{ secrets.SSH_PRIVATE_KEY_SERVER }}" > ~/.ssh/id_server_245
+          chmod 600 ~/.ssh/id_server_245
+
+          cat > ~/.ssh/config << 'EOF'
+          Host bastion
+            HostName       201.131.45.42
+            User           usrproxy
+            IdentityFile   ~/.ssh/id_bastion
+            StrictHostKeyChecking no
+            ServerAliveInterval  60
+            ServerAliveCountMax  5
+
+          Host server-245
+            HostName       192.168.100.245
+            User           admin245
+            ProxyJump      bastion
+            IdentityFile   ~/.ssh/id_server_245
+            StrictHostKeyChecking no
+            ServerAliveInterval  60
+            ServerAliveCountMax  5
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Verificar conectividad SSH
+        run: |
+          ssh server-245 "echo '✓ Runner conectado a $(hostname) vía ProxyJump'"
+
+      # Rolling updates — parallelism=1 → zero-downtime
+      # Si el nuevo contenedor falla el healthcheck, Swarm revierte automáticamente
+
+      # Usar el tag SHA (no :latest) garantiza que Swarm siempre detecta imagen nueva
+      # y fuerza el pull + restart del task, sin depender de comparación de digests
+      - name: Rolling update — ms-frontend
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-frontend:${{ github.sha }} \
+            --with-registry-auth \
+            pdc_ms-frontend"
+
+      - name: Rolling update — ms-orchestrator
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:${{ github.sha }} \
+            --env-add JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --env-add ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
+            --with-registry-auth \
+            pdc_ms-orchestrator"
+
+      - name: Rolling update — ms-ai-generator
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }} \
+            --with-registry-auth \
+            pdc_ms-ai-generator"
+
+      - name: Rolling update — ms-doc-processor
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-doc-processor:${{ github.sha }} \
+            --env-add AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+            --env-add AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+            --env-add AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }} \
+            --env-add AWS_REGION=us-east-1 \
+            --with-registry-auth \
+            pdc_ms-doc-processor"
+
+      - name: Rolling update — ms-ingestion
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:${{ github.sha }} \
+            --with-registry-auth \
+            pdc_ms-ingestion"
+
+      - name: Rolling update — ms-monitor
+        run: |
+          ssh server-245 "docker service update \
+            --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-monitor:${{ github.sha }} \
+            --user 1000:988 \
+            --with-registry-auth \
+            pdc_ms-monitor"
+
+      - name: Verificar estado del Swarm
+        run: |
+          ssh server-245 "docker service ls"
+
+      # Limpieza de imágenes antiguas en el servidor
+      # Elimina imágenes sin tag activo que ya no usa ningún contenedor corriendo
+      # Previene que el disco se llene con acumulación de imágenes SHA por cada CI run
+      - name: Limpiar imágenes antiguas en servidor
+        run: |
+          ssh server-245 "docker image prune -a --filter 'until=24h' -f || true"

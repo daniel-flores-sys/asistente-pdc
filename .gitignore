@@ -1,0 +1,47 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Docker
+.docker/
+
+# ms-doc-processor generated output
+ms-doc-processor/output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+informe/img/
+
+*.zip
+CLAUDE.md
+/.agents/
+/.claude/
+/docs/.obsidian/
+skills-lock.json
+
+# Logs
+/logs-deploys/
+
+# Seguridad — nunca subir al repo
+/security/
+
+# Archivos para desarrollo local, no deben ser versionados
+**/.env
+docker-compose.local.yml

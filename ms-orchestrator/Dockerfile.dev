@@ -1,0 +1,8 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9 --activate
+COPY package.json pnpm-lock.yaml tsconfig.json ./
+# Instala devDependencies también (ts-node-dev está en devDeps)
+RUN pnpm install --ignore-scripts
+# src/ llega montado como volumen — no se copia aquí
+CMD ["pnpm", "run", "start:dev"]

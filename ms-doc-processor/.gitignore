@@ -1,0 +1,4 @@
+.obsidian/
+
+# Credenciales — NUNCA subir a Git
+.env
