@@ -177,8 +177,8 @@ jobs:
       - name: Build y push postgres (imagen con schema)
         uses: docker/build-push-action@v5
         with:
-          context: ./ms-doc-processor/infra/postgres
-          file: ./ms-doc-processor/infra/postgres/Dockerfile
+          context: ./infra/postgres
+          file: ./infra/postgres/Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/pdc-postgres:latest
@@ -316,6 +316,7 @@ jobs:
         run: |
           ssh server-245 "docker service update \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }} \
+            --env-add CHROMA_PORT=8000 \
             --with-registry-auth \
             pdc_ms-ai-generator"
 
@@ -334,6 +335,7 @@ jobs:
         run: |
           ssh server-245 "docker service update \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ingestion:${{ github.sha }} \
+            --env-add CHROMA_PORT=8000 \
             --with-registry-auth \
             pdc_ms-ingestion"
 
@@ -344,6 +346,14 @@ jobs:
             --user 1000:988 \
             --with-registry-auth \
             pdc_ms-monitor"
+
+      # chromadb: no tiene imagen propia en DockerHub — se actualiza directo a la versión pinned
+      # 0.5.23 es compatible con el cliente chromadb==0.5.3 en ms-ingestion y ms-ai-generator
+      - name: Rolling update — chromadb
+        run: |
+          ssh server-245 "docker service update \
+            --image chromadb/chroma:0.5.23 \
+            pdc_chromadb"
 
       - name: Verificar estado del Swarm
         run: |
