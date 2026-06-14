@@ -30,16 +30,19 @@ export default function AdminDocumentos() {
   const load = () => {
     setLoading(true);
     adminGetDocumentos()
-      .then((raw: any[]) =>
+      .then((raw: any) => {
+        if (!Array.isArray(raw)) {
+          throw new Error(raw?.detail ?? raw?.message ?? 'Respuesta inesperada del servidor');
+        }
         setDocs(raw.map((d) => ({
           id: d.id,
           nombre: d.nombre_archivo ?? '',
           tipo: d.tipo ?? '',
           chunks: d.chunks_generados ?? 0,
           fecha: d.creado_en ?? new Date().toISOString(),
-        })))
-      )
-      .catch((e) => setError(e.message))
+        })));
+      })
+      .catch((e) => setError(e.response?.data?.detail ?? e.message))
       .finally(() => setLoading(false));
   };
 

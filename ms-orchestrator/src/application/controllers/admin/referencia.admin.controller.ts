@@ -1,9 +1,9 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, ParseUUIDPipe, UseGuards, HttpCode, HttpStatus,
+  Body, Param, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import {
-  IsString, IsNotEmpty, IsInt, IsOptional, IsIn, IsUUID, Min, Max,
+  IsString, IsNotEmpty, IsInt, IsOptional, IsIn, Min, Max,
 } from 'class-validator';
 import { pool }              from '../../../infrastructure/db';
 import { JwtAuthGuard }      from '../../../infrastructure/guards/jwt-auth.guard';
@@ -16,28 +16,28 @@ class NombreDto {
 }
 
 class NivelAreaDto {
-  @IsUUID()   nivel_id: string;
+  @IsString() @IsNotEmpty() nivel_id: string;
   @IsString() @IsNotEmpty() nombre: string;
   @IsString() @IsNotEmpty() codigo: string;
   @IsString() @IsOptional() carga_horaria?: string;
 }
 
 class AnioDto {
-  @IsUUID()   nivel_id: string;
+  @IsString() @IsNotEmpty() nivel_id: string;
   @IsInt() @Min(1) @Max(12) numero: number;
   @IsString() @IsNotEmpty() literal: string;
 }
 
 class TemaTriDto {
-  @IsUUID()   area_curricular_id: string;
-  @IsUUID()   anio_escolaridad_id: string;
+  @IsString() @IsNotEmpty() area_curricular_id: string;
+  @IsString() @IsNotEmpty() anio_escolaridad_id: string;
   @IsInt() @IsIn([1, 2, 3]) trimestre_num: number;
   @IsString() @IsNotEmpty() titulo: string;
   @IsString() @IsOptional() descripcion?: string;
 }
 
 class ObjetivoDto {
-  @IsUUID()   anio_escolaridad_id: string;
+  @IsString() @IsNotEmpty() anio_escolaridad_id: string;
   @IsInt() @IsIn([1, 2, 3]) trimestre_num: number;
   @IsString() @IsNotEmpty() ser: string;
   @IsString() @IsNotEmpty() saber: string;
@@ -68,7 +68,7 @@ export class ReferenciaAdminController {
   }
 
   @Put('niveles/:id')
-  async updateNivel(@Param('id', ParseUUIDPipe) id: string, @Body() dto: NombreDto) {
+  async updateNivel(@Param('id') id: string, @Body() dto: NombreDto) {
     const res = await pool.query(
       'UPDATE nivel_educativo SET nombre=$1 WHERE id=$2 RETURNING *',
       [dto.nombre, id],
@@ -78,7 +78,7 @@ export class ReferenciaAdminController {
 
   @Delete('niveles/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteNivel(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteNivel(@Param('id') id: string) {
     await pool.query('DELETE FROM nivel_educativo WHERE id=$1', [id]);
   }
 
@@ -105,7 +105,7 @@ export class ReferenciaAdminController {
   }
 
   @Put('anios/:id')
-  async updateAnio(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AnioDto) {
+  async updateAnio(@Param('id') id: string, @Body() dto: AnioDto) {
     const res = await pool.query(
       'UPDATE anio_escolaridad SET nivel_id=$1, numero=$2, literal=$3 WHERE id=$4 RETURNING *',
       [dto.nivel_id, dto.numero, dto.literal, id],
@@ -115,7 +115,7 @@ export class ReferenciaAdminController {
 
   @Delete('anios/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteAnio(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteAnio(@Param('id') id: string) {
     await pool.query('DELETE FROM anio_escolaridad WHERE id=$1', [id]);
   }
 
@@ -142,7 +142,7 @@ export class ReferenciaAdminController {
   }
 
   @Put('areas/:id')
-  async updateArea(@Param('id', ParseUUIDPipe) id: string, @Body() dto: NivelAreaDto) {
+  async updateArea(@Param('id') id: string, @Body() dto: NivelAreaDto) {
     const res = await pool.query(
       'UPDATE area_curricular SET nivel_id=$1, nombre=$2, codigo=$3, carga_horaria=$4 WHERE id=$5 RETURNING *',
       [dto.nivel_id, dto.nombre, dto.codigo, dto.carga_horaria ?? null, id],
@@ -152,7 +152,7 @@ export class ReferenciaAdminController {
 
   @Delete('areas/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteArea(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteArea(@Param('id') id: string) {
     await pool.query('DELETE FROM area_curricular WHERE id=$1', [id]);
   }
 
@@ -160,19 +160,25 @@ export class ReferenciaAdminController {
 
   @Get('temas')
   async getTemas() {
-    const res = await pool.query(`
-      SELECT tt.*,
-             ac.nombre  AS area_nombre,
-             ac.codigo  AS area_codigo,
-             ae.literal AS anio_literal,
-             ne.nombre  AS nivel_nombre
-      FROM tema_trimestral tt
-      JOIN area_curricular  ac ON ac.id = tt.area_curricular_id
-      JOIN anio_escolaridad ae ON ae.id = tt.anio_escolaridad_id
-      JOIN nivel_educativo  ne ON ne.id = ae.nivel_id
-      ORDER BY ne.nombre, ae.numero, ac.nombre, tt.trimestre_num
-    `);
-    return res.rows;
+    try {
+      const res = await pool.query(`
+        SELECT tt.*,
+               ac.nombre  AS area_nombre,
+               ac.codigo  AS area_codigo,
+               ae.literal AS anio_literal,
+               ne.nombre  AS nivel_nombre
+        FROM tema_trimestral tt
+        JOIN area_curricular  ac ON ac.id = tt.area_curricular_id
+        JOIN anio_escolaridad ae ON ae.id = tt.anio_escolaridad_id
+        JOIN nivel_educativo  ne ON ne.id = ae.nivel_id
+        ORDER BY ne.nombre, ae.numero, ac.nombre, tt.trimestre_num
+      `);
+      return res.rows;
+    } catch (e: any) {
+      // 42P01 = tabla no existe (BD con schema antiguo)
+      if (e.code === '42P01') return [];
+      throw e;
+    }
   }
 
   @Post('temas')
@@ -187,7 +193,7 @@ export class ReferenciaAdminController {
   }
 
   @Put('temas/:id')
-  async updateTema(@Param('id', ParseUUIDPipe) id: string, @Body() dto: TemaTriDto) {
+  async updateTema(@Param('id') id: string, @Body() dto: TemaTriDto) {
     const res = await pool.query(
       `UPDATE tema_trimestral
        SET area_curricular_id=$1, anio_escolaridad_id=$2, trimestre_num=$3,
@@ -200,7 +206,7 @@ export class ReferenciaAdminController {
 
   @Delete('temas/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteTema(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteTema(@Param('id') id: string) {
     await pool.query('DELETE FROM tema_trimestral WHERE id=$1', [id]);
   }
 
@@ -208,16 +214,21 @@ export class ReferenciaAdminController {
 
   @Get('objetivos')
   async getObjetivos() {
-    const res = await pool.query(`
-      SELECT oh.*,
-             ae.literal AS anio_literal,
-             ne.nombre  AS nivel_nombre
-      FROM objetivo_holistico oh
-      JOIN anio_escolaridad ae ON ae.id = oh.anio_escolaridad_id
-      JOIN nivel_educativo  ne ON ne.id = ae.nivel_id
-      ORDER BY ne.nombre, ae.numero, oh.trimestre_num
-    `);
-    return res.rows;
+    try {
+      const res = await pool.query(`
+        SELECT oh.*,
+               ae.literal AS anio_literal,
+               ne.nombre  AS nivel_nombre
+        FROM objetivo_holistico oh
+        JOIN anio_escolaridad ae ON ae.id = oh.anio_escolaridad_id
+        JOIN nivel_educativo  ne ON ne.id = ae.nivel_id
+        ORDER BY ne.nombre, ae.numero, oh.trimestre_num
+      `);
+      return res.rows;
+    } catch (e: any) {
+      if (e.code === '42P01') return [];
+      throw e;
+    }
   }
 
   @Post('objetivos')
@@ -232,7 +243,7 @@ export class ReferenciaAdminController {
   }
 
   @Put('objetivos/:id')
-  async updateObjetivo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ObjetivoDto) {
+  async updateObjetivo(@Param('id') id: string, @Body() dto: ObjetivoDto) {
     const res = await pool.query(
       `UPDATE objetivo_holistico
        SET anio_escolaridad_id=$1, trimestre_num=$2,
@@ -245,7 +256,7 @@ export class ReferenciaAdminController {
 
   @Delete('objetivos/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteObjetivo(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteObjetivo(@Param('id') id: string) {
     await pool.query('DELETE FROM objetivo_holistico WHERE id=$1', [id]);
   }
 }
