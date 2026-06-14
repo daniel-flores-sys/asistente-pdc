@@ -4,7 +4,7 @@ from src.infrastructure import docker_client as dc
 from src.infrastructure.metrics_store import (
     update_metric, add_alert, get_config,
     increment_low_cpu_cycles, reset_low_cpu_cycles, EXCLUDED_SERVICES,
-    check_and_update_restart_count,
+    HIDDEN_SERVICES, check_and_update_restart_count,
 )
 from src.domain.schemas.monitor import MetricInfo
 
@@ -61,6 +61,8 @@ def _run_one_cycle():
 
     for service in services:
         service_name = service.name.replace(f"{STACK_NAME}_", "")
+        if service_name in HIDDEN_SERVICES:
+            continue  # BDs: no escalar, no medir, no alertar desde el loop
         spec = service.attrs.get("Spec", {})
         mode = spec.get("Mode", {})
 

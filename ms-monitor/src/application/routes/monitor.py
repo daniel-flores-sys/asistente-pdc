@@ -7,7 +7,7 @@ from src.domain.schemas.monitor import (
 from src.infrastructure import docker_client as dc
 from src.infrastructure.metrics_store import (
     get_metrics, get_alerts, get_config, update_config, EXCLUDED_SERVICES,
-    reset_low_cpu_cycles,
+    HIDDEN_SERVICES, reset_low_cpu_cycles,
 )
 
 router = APIRouter(prefix="/monitor", tags=["monitor"])
@@ -20,6 +20,9 @@ def list_services():
     services = dc.get_stack_services(STACK_NAME)
     result = []
     for svc in services:
+        short = svc.name.replace(f"{STACK_NAME}_", "")
+        if short in HIDDEN_SERVICES:
+            continue
         spec = svc.attrs.get("Spec", {})
         mode = spec.get("Mode", {})
         replicas_desired = mode.get("Replicated", {}).get("Replicas", 0)
@@ -46,7 +49,7 @@ def list_services():
         ]
 
         result.append(ServiceInfo(
-            name=svc.name.replace(f"{STACK_NAME}_", ""),
+            name=short,
             replicas_running=replicas_running,
             replicas_desired=replicas_desired,
             image=image,
@@ -58,7 +61,7 @@ def list_services():
 
 @router.get("/metrics", response_model=list[MetricInfo])
 def list_metrics():
-    return get_metrics()
+    return [m for m in get_metrics() if m.service_name not in HIDDEN_SERVICES]
 
 
 @router.post("/scale", response_model=ScaleResponse)

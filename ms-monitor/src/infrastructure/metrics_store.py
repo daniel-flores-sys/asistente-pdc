@@ -28,6 +28,11 @@ EXCLUDED_SERVICES = set(
     os.getenv("EXCLUDED_SERVICES", "ms-monitor,postgres,chromadb").split(",")
 )
 
+# Servicios que no se muestran en el panel de monitoreo (BDs — no tienen réplicas dinámicas)
+HIDDEN_SERVICES = set(
+    os.getenv("HIDDEN_SERVICES", "postgres,chromadb").split(",")
+)
+
 
 def get_config() -> ScaleConfig:
     return _config

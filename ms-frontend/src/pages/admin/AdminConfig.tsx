@@ -10,7 +10,7 @@ import { Loader2, Save } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { adminGetConfig, adminSaveConfig } from '@/api';
 
-interface LLMParams { modelo: string; temperatura: number; max_tokens: number; }
+interface LLMParams { modelo: string; temperature: number; max_tokens: number; }
 interface RAGParams { top_k: number; score_threshold: number; collection: string; }
 interface Prompts { system_prompt: string; user_template: string; }
 
@@ -48,7 +48,7 @@ function useConfigSection<T>(clave: string, defaults: T) {
 }
 
 export default function AdminConfig() {
-  const llm = useConfigSection<LLMParams>('llm_params', { modelo: 'gemma3:4b', temperatura: 0.7, max_tokens: 4096 });
+  const llm = useConfigSection<LLMParams>('llm_params', { modelo: 'gemma3:4b', temperature: 0.7, max_tokens: 4096 });
   const rag = useConfigSection<RAGParams>('rag_params', { top_k: 5, score_threshold: 0.7, collection: 'curriculum_pdc' });
   const prompts = useConfigSection<Prompts>('prompts', { system_prompt: '', user_template: '' });
 
@@ -86,11 +86,11 @@ export default function AdminConfig() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label>Temperatura ({llm.data.temperatura})</Label>
+                      <Label>Temperatura ({llm.data.temperature})</Label>
                       <Input
                         type="number" min="0" max="2" step="0.05"
-                        value={llm.data.temperatura}
-                        onChange={(e) => llm.setData((p) => ({ ...p, temperatura: +e.target.value }))}
+                        value={llm.data.temperature}
+                        onChange={(e) => llm.setData((p) => ({ ...p, temperature: +e.target.value }))}
                       />
                       <p className="text-xs text-muted-foreground">0 = determinista · 2 = muy creativo</p>
                     </div>

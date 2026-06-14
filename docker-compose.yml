@@ -37,13 +37,13 @@ services:
     networks:
       - pdc-overlay
     deploy:
-      replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
         delay: 10s
       placement:
         constraints:
-          # BD siempre en el manager para garantizar acceso al volumen persistente
+          # BD siempre en el manager — mode: global garantiza exactamente 1 instancia sin poder escalar
           - node.role == manager
 
   chromadb:
@@ -55,13 +55,13 @@ services:
     networks:
       - pdc-overlay
     deploy:
-      replicas: 1
+      mode: global
       restart_policy:
         condition: on-failure
         delay: 10s
       placement:
         constraints:
-          # Vector store junto al manager — comparte red interna con ms-ai-generator e ms-ingestion
+          # Vector store junto al manager — mode: global garantiza exactamente 1 instancia sin poder escalar
           - node.role == manager
 
   # ─────────────────────────────────────────────────────────────────────────────

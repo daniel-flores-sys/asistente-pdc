@@ -45,3 +45,6 @@ skills-lock.json
 # Archivos para desarrollo local, no deben ser versionados
 **/.env
 docker-compose.local.yml
+
+# Tests E2E locales — no van al repo (contienen credenciales de producción)
+tests/e2e/
