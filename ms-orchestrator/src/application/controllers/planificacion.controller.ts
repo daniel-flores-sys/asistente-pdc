@@ -3,7 +3,7 @@ import {
   HttpException, HttpStatus, UseGuards,
 } from '@nestjs/common';
 import {
-  IsString, IsNotEmpty, IsArray,
+  IsString, IsNotEmpty, IsUUID, IsArray,
   IsObject, IsOptional,
 } from 'class-validator';
 import { AiGeneratorService }   from '../../infrastructure/services/ai-generator.service';
@@ -20,11 +20,10 @@ export class GenerarPDCDto {
   @IsString() @IsNotEmpty() distrito: string;
   @IsString() @IsOptional() nombre_director?: string;
 
-  // BD antigua usa SERIAL (enteros), no UUID — solo validar que no estén vacíos
-  @IsNotEmpty() anio_escolaridad_id: string | number;
-  @IsNotEmpty() trimestre_id: string | number;
+  @IsUUID() anio_escolaridad_id: string;
+  @IsUUID() trimestre_id: string;
 
-  @IsArray() @IsNotEmpty({ each: true }) areas_seleccionadas: (string | number)[];
+  @IsArray() @IsUUID('4', { each: true }) areas_seleccionadas: string[];
   @IsObject() temas_seleccionados: Record<string, string[]>;
 
   @IsString() @IsOptional() materiales?: string;
