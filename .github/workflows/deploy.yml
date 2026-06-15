@@ -309,6 +309,7 @@ jobs:
             --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-orchestrator:${{ github.sha }} \
             --env-add JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --env-add ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
+            --env-add DOC_PROCESSOR_PUBLIC_URL= \
             --with-registry-auth \
             pdc_ms-orchestrator"
 

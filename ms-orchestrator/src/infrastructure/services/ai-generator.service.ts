@@ -94,7 +94,7 @@ export class AiGeneratorService {
 
       // Paso 1: ms-ai-generator genera el contenido PDC con Ollama y persiste
       const genRes = await axios.post(`${this.aiUrl}/generate`, aiPayload, {
-        timeout: 240000,
+        timeout: 600000,
       });
       const { plan_id } = genRes.data;
 

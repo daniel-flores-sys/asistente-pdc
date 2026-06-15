@@ -130,7 +130,7 @@ services:
       - NODE_ENV=production
       - AI_GENERATOR_URL=http://ms-ai-generator:8000
       - DOC_PROCESSOR_URL=http://ms-doc-processor:8001
-      - DOC_PROCESSOR_PUBLIC_URL=http://localhost:8001
+      - DOC_PROCESSOR_PUBLIC_URL=
       - INGESTION_URL=http://ms-ingestion:8003
       - MONITOR_URL=http://ms-monitor:8002
       - DB_HOST=postgres

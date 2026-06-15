@@ -73,7 +73,7 @@ export class PlanificacionController {
 
       // Descuenta crédito solo tras generación exitosa
       const creditos_restantes = await this.usuarioService.decrementCreditos(req.user.sub);
-      return { ...result, creditos_restantes };
+      return { ...result, creditos_restantes: creditos_restantes ?? 0 };
     } catch (error) {
       throw new HttpException(
         { error: 'Error al generar el PDC', detalle: error.message },

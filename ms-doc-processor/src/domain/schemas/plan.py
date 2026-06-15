@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 
 class PlanData(BaseModel):
-    id: int
+    id: str
     numero_plan: int
     # Fechas vienen de trimestre (antes eran columnas propias del plan)
     fecha_inicio: date

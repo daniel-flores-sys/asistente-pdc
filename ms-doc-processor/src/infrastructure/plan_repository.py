@@ -39,7 +39,7 @@ WHERE pc.id = %s
 """
 
 
-def fetch_plan(plan_id: int) -> PlanData:
+def fetch_plan(plan_id: str) -> PlanData:
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

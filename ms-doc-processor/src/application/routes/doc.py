@@ -30,7 +30,7 @@ def _make_filename(plan) -> str:
 
 
 @router.get("/doc/{plan_id}", summary="Descarga directa del PDC en Word")
-def get_document(plan_id: int):
+def get_document(plan_id: str):
     """
     Genera el documento Word del plan y lo devuelve como stream descargable.
     No requiere configuración de S3.
@@ -56,7 +56,7 @@ def get_document(plan_id: int):
 
 
 @router.post("/doc/{plan_id}/upload", summary="Genera el PDC y lo sube a S3")
-def upload_document(plan_id: int):
+def upload_document(plan_id: str):
     """
     Genera el Word, lo sube a S3 (si está configurado) y devuelve:
       { s3_url, fallback_url, filename }
