@@ -16,28 +16,28 @@ class NombreDto {
 }
 
 class NivelAreaDto {
-  @IsString() @IsNotEmpty() nivel_id: string;
+  @IsNotEmpty() nivel_id: string | number;
   @IsString() @IsNotEmpty() nombre: string;
   @IsString() @IsNotEmpty() codigo: string;
   @IsString() @IsOptional() carga_horaria?: string;
 }
 
 class AnioDto {
-  @IsString() @IsNotEmpty() nivel_id: string;
+  @IsNotEmpty() nivel_id: string | number;
   @IsInt() @Min(1) @Max(12) numero: number;
   @IsString() @IsNotEmpty() literal: string;
 }
 
 class TemaTriDto {
-  @IsString() @IsNotEmpty() area_curricular_id: string;
-  @IsString() @IsNotEmpty() anio_escolaridad_id: string;
+  @IsNotEmpty() area_curricular_id: string | number;
+  @IsNotEmpty() anio_escolaridad_id: string | number;
   @IsInt() @IsIn([1, 2, 3]) trimestre_num: number;
   @IsString() @IsNotEmpty() titulo: string;
   @IsString() @IsOptional() descripcion?: string;
 }
 
 class ObjetivoDto {
-  @IsString() @IsNotEmpty() anio_escolaridad_id: string;
+  @IsNotEmpty() anio_escolaridad_id: string | number;
   @IsInt() @IsIn([1, 2, 3]) trimestre_num: number;
   @IsString() @IsNotEmpty() ser: string;
   @IsString() @IsNotEmpty() saber: string;
@@ -226,7 +226,8 @@ export class ReferenciaAdminController {
       `);
       return res.rows;
     } catch (e: any) {
-      if (e.code === '42P01') return [];
+      // 42P01 = tabla no existe; 42703 = columna no existe (schema antiguo)
+      if (['42P01', '42703'].includes(e.code)) return [];
       throw e;
     }
   }

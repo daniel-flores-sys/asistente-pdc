@@ -244,7 +244,7 @@ export function AniosTab() {
     catch (e: any) { setError(e.response?.data?.message ?? 'Error al eliminar'); }
   };
 
-  const InlineForm = () => (
+  const renderForm = () => (
     <div className="flex gap-2 items-center">
       <Select value={form.nivel_id} onValueChange={(v) => setForm((p) => ({ ...p, nivel_id: v }))}>
         <SelectTrigger className="h-7 text-xs w-36"><SelectValue placeholder="Nivel" /></SelectTrigger>
@@ -279,7 +279,7 @@ export function AniosTab() {
             <TableBody>
               {adding && (
                 <TableRow className="bg-primary/5">
-                  <TableCell colSpan={3}><InlineForm /></TableCell>
+                  <TableCell colSpan={3}>{renderForm()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" className="w-7 h-7" onClick={add} disabled={saving}>
@@ -293,7 +293,7 @@ export function AniosTab() {
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   {editId === r.id ? (
-                    <TableCell colSpan={3}><InlineForm /></TableCell>
+                    <TableCell colSpan={3}>{renderForm()}</TableCell>
                   ) : (
                     <>
                       <TableCell><Badge variant="outline" className="text-xs">{r.nivel_nombre}</Badge></TableCell>
@@ -380,7 +380,7 @@ export function AreasTab() {
     catch (e: any) { setError(e.response?.data?.message ?? 'Error al eliminar'); }
   };
 
-  const InlineForm = () => (
+  const renderForm = () => (
     <div className="flex gap-2 items-center flex-wrap">
       <Select value={form.nivel_id} onValueChange={(v) => setForm((p) => ({ ...p, nivel_id: v }))}>
         <SelectTrigger className="h-7 text-xs w-32"><SelectValue placeholder="Nivel" /></SelectTrigger>
@@ -418,7 +418,7 @@ export function AreasTab() {
             <TableBody>
               {adding && (
                 <TableRow className="bg-primary/5">
-                  <TableCell colSpan={4}><InlineForm /></TableCell>
+                  <TableCell colSpan={4}>{renderForm()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" className="w-7 h-7" onClick={add} disabled={saving}>
@@ -432,7 +432,7 @@ export function AreasTab() {
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   {editId === r.id ? (
-                    <TableCell colSpan={4}><InlineForm /></TableCell>
+                    <TableCell colSpan={4}>{renderForm()}</TableCell>
                   ) : (
                     <>
                       <TableCell><Badge variant="outline" className="text-xs">{r.nivel_nombre}</Badge></TableCell>
@@ -545,7 +545,7 @@ export function TemasTab() {
     catch (e: any) { setError(e.response?.data?.message ?? 'Error al eliminar'); }
   };
 
-  const InlineForm = () => (
+  const renderForm = () => (
     <div className="space-y-2">
       <div className="flex gap-2 flex-wrap">
         <Select value={form.area_curricular_id} onValueChange={(v) => setForm((p) => ({ ...p, area_curricular_id: v }))}>
@@ -593,7 +593,7 @@ export function TemasTab() {
         <Card className="border-primary/30">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nuevo tema trimestral</p>
-            <InlineForm />
+            {renderForm()}
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => setAdding(false)}>Cancelar</Button>
               <Button size="sm" onClick={add} disabled={saving}>
@@ -608,7 +608,7 @@ export function TemasTab() {
         <Card className="border-amber-400/50 bg-amber-50/30">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">Editando tema</p>
-            <InlineForm />
+            {renderForm()}
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>
               <Button size="sm" onClick={save} disabled={saving}>
@@ -729,7 +729,7 @@ export function ObjetivosTab() {
     catch (e: any) { setError(e.response?.data?.message ?? 'Error al eliminar'); }
   };
 
-  const InlineForm = () => (
+  const renderForm = () => (
     <div className="space-y-3">
       <div className="flex gap-2 flex-wrap">
         <Select value={form.anio_escolaridad_id} onValueChange={(v) => setForm((p) => ({ ...p, anio_escolaridad_id: v }))}>
@@ -776,7 +776,7 @@ export function ObjetivosTab() {
         <Card className="border-primary/30">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nuevo objetivo holístico</p>
-            <InlineForm />
+            {renderForm()}
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => setAdding(false)}>Cancelar</Button>
               <Button size="sm" onClick={add} disabled={saving}>
@@ -791,7 +791,7 @@ export function ObjetivosTab() {
         <Card className="border-amber-400/50 bg-amber-50/30">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">Editando objetivo holístico</p>
-            <InlineForm />
+            {renderForm()}
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>
               <Button size="sm" onClick={save} disabled={saving}>

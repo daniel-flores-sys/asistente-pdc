@@ -9,6 +9,12 @@ export class ReferenceDataService {
     try {
       // Queries en paralelo para minimizar latencia
       // unidad_educativa eliminada — el docente la ingresa como texto libre
+      // 42P01 = table not found; 42703 = column not found (schema mismatch after migration)
+      const safeSql = (p: Promise<any>) =>
+        p.catch((e: any) =>
+          ['42P01', '42703'].includes(e.code) ? { rows: [] } : Promise.reject(e),
+        );
+
       const [niveles, anios, areas, trimestres, temas, objetivos] = await Promise.all([
         client.query('SELECT id, nombre FROM nivel_educativo ORDER BY id'),
         client.query(`
@@ -23,26 +29,26 @@ export class ReferenceDataService {
           FROM area_curricular
           ORDER BY nivel_id, id
         `),
-        client.query(`
+        safeSql(client.query(`
           SELECT t.id, t.gestion_id, t.numero,
                  t.fecha_inicio, t.fecha_fin,
                  g.anio AS gestion_anio
           FROM trimestre t
           JOIN gestion g ON g.id = t.gestion_id
           ORDER BY g.anio DESC, t.numero
-        `),
-        client.query(`
+        `)),
+        safeSql(client.query(`
           SELECT id, area_curricular_id, anio_escolaridad_id,
                  trimestre_num, titulo, descripcion
           FROM tema_trimestral
           ORDER BY area_curricular_id, anio_escolaridad_id, trimestre_num
-        `),
-        client.query(`
+        `)),
+        safeSql(client.query(`
           SELECT id, anio_escolaridad_id, trimestre_num,
                  ser, saber, hacer, decidir
           FROM objetivo_holistico
           ORDER BY anio_escolaridad_id, trimestre_num
-        `),
+        `)),
       ]);
 
       return {

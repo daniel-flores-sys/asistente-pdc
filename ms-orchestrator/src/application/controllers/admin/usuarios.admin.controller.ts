@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Body,
-  Param, ParseUUIDPipe, UseGuards, HttpCode, HttpStatus,
+  Param, UseGuards, HttpCode, HttpStatus,
   ConflictException,
 } from '@nestjs/common';
 import {
@@ -60,7 +60,7 @@ export class UsuariosAdminController {
   @Put(':id/creditos')
   @HttpCode(HttpStatus.OK)
   async setCreditos(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateCreditosDto,
   ) {
     await this.usuarioService.updateCreditos(id, dto.creditos);
@@ -70,7 +70,7 @@ export class UsuariosAdminController {
   @Put(':id/activo')
   @HttpCode(HttpStatus.OK)
   async setActivo(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateActivoDto,
   ) {
     await this.usuarioService.setActivo(id, dto.activo);

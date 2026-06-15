@@ -16,19 +16,39 @@ async def insert_documento(
 ) -> str:
     """Registra un documento recién indexado. Retorna el id generado."""
     pool = get_pool()
-    row = await pool.fetchrow(
-        """
-        INSERT INTO documentos_indexados
-            (nombre_archivo, tipo, chunks_generados, chroma_ids, estado, subido_por, creado_en)
-        VALUES ($1, $2, $3, $4::TEXT[], 'indexado', $5, NOW())
-        RETURNING id
-        """,
-        nombre_archivo,
-        tipo,
-        chunks_generados,
-        chroma_ids,
-        subido_por,
-    )
+
+    # Convertir subido_por al tipo que espera la BD:
+    # BD nueva (UUID): pasa como string; BD antigua (SERIAL): convierte a int.
+    # Si no es ni UUID ni entero, omite el campo para evitar error de tipo.
+    sp: int | str | None = None
+    if subido_por is not None:
+        if subido_por.isdigit():
+            sp = int(subido_por)
+        else:
+            sp = subido_por  # asume UUID u otro formato válido
+
+    try:
+        row = await pool.fetchrow(
+            """
+            INSERT INTO documentos_indexados
+                (nombre_archivo, tipo, chunks_generados, chroma_ids, estado, subido_por, creado_en)
+            VALUES ($1, $2, $3, $4::TEXT[], 'indexado', $5, NOW())
+            RETURNING id
+            """,
+            nombre_archivo, tipo, chunks_generados, chroma_ids, sp,
+        )
+    except Exception:
+        # Fallback: si subido_por causa error de tipo, insertar sin él
+        row = await pool.fetchrow(
+            """
+            INSERT INTO documentos_indexados
+                (nombre_archivo, tipo, chunks_generados, chroma_ids, estado, creado_en)
+            VALUES ($1, $2, $3, $4::TEXT[], 'indexado', NOW())
+            RETURNING id
+            """,
+            nombre_archivo, tipo, chunks_generados, chroma_ids,
+        )
+
     return str(row["id"])
 
 
