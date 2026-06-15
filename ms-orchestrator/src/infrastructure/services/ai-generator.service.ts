@@ -39,19 +39,19 @@ export class AiGeneratorService {
         client.query(
           `SELECT ser, saber, hacer, decidir
            FROM objetivo_holistico
-           WHERE anio_escolaridad_id = $1
-             AND trimestre_num = (SELECT numero FROM trimestre WHERE id = $2)`,
-          [dto.anio_escolaridad_id, dto.trimestre_id],
+           WHERE anio_escolaridad_id::text = $1::text
+             AND trimestre_num = (SELECT numero FROM trimestre WHERE id::text = $2::text)`,
+          [String(dto.anio_escolaridad_id), String(dto.trimestre_id)],
         ),
         client.query(
-          'SELECT id, nombre, codigo FROM area_curricular WHERE id = ANY($1::uuid[])',
-          [dto.areas_seleccionadas],
+          'SELECT id, nombre, codigo FROM area_curricular WHERE id::text = ANY($1::text[])',
+          [dto.areas_seleccionadas.map(String)],
         ),
         allTemaIds.length > 0
           ? client.query(
               `SELECT id, area_curricular_id, trimestre_num, titulo, descripcion
-               FROM tema_trimestral WHERE id = ANY($1::uuid[])`,
-              [allTemaIds],
+               FROM tema_trimestral WHERE id::text = ANY($1::text[])`,
+              [allTemaIds.map(String)],
             )
           : Promise.resolve({ rows: [] }),
       ]);
