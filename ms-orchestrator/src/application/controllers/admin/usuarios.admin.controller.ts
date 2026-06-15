@@ -47,6 +47,7 @@ export class UsuariosAdminController {
       const user = await this.usuarioService.create(dto.nombre, dto.email, hash, dto.ci, dto.titulo);
       if (dto.creditos && dto.creditos > 0) {
         await this.usuarioService.updateCreditos(user.id, dto.creditos);
+        user.creditos = dto.creditos;
       }
       return user;
     } catch (err: any) {

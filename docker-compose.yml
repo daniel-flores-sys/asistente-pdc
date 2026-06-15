@@ -47,7 +47,7 @@ services:
           - node.role == manager
 
   chromadb:
-    image: chromadb/chroma:0.5.23   # pinned: compatible con client 0.5.3 en ms-ingestion/ms-ai-generator
+    image: chromadb/chroma:0.6.3
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
     volumes:
@@ -75,7 +75,7 @@ services:
       - PORT=8000
       - ENVIRONMENT=production
       - OLLAMA_URL=${OLLAMA_URL:-}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:e4b}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=genplan_db

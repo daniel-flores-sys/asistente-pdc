@@ -317,6 +317,7 @@ jobs:
           ssh server-245 "docker service update \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/ms-ai-generator:${{ github.sha }} \
             --env-add CHROMA_PORT=8000 \
+            --env-add OLLAMA_MODEL=gemma4:e4b \
             --with-registry-auth \
             pdc_ms-ai-generator"
 
@@ -348,11 +349,11 @@ jobs:
             pdc_ms-monitor"
 
       # chromadb: no tiene imagen propia en DockerHub — se actualiza directo a la versión pinned
-      # 0.5.23 es compatible con el cliente chromadb==0.5.3 en ms-ingestion y ms-ai-generator
+      # 0.6.3: usa v2 API, compatible con chromadb-client==0.6.3 en ms-ai-generator e ms-ingestion
       - name: Rolling update — chromadb
         run: |
           ssh server-245 "docker service update \
-            --image chromadb/chroma:0.5.23 \
+            --image chromadb/chroma:0.6.3 \
             pdc_chromadb"
 
       - name: Verificar estado del Swarm

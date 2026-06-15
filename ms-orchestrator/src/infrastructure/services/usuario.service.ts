@@ -24,7 +24,7 @@ export class UsuarioService {
     const res = await pool.query(
       `INSERT INTO usuarios (nombre, email, password_hash, ci, titulo, creditos, activo)
        VALUES ($1, $2, $3, $4, $5, 0, true)
-       RETURNING id, nombre, email, creditos, creado_en`,
+       RETURNING id, nombre, email, ci, titulo, creditos, activo, creado_en`,
       [nombre, email, passwordHash, ci, titulo ?? null],
     );
     return res.rows[0];
@@ -38,7 +38,7 @@ export class UsuarioService {
   }
 
   async updateCreditos(id: string, creditos: number) {
-    await pool.query('UPDATE usuarios SET creditos = $1 WHERE id = $2', [creditos, id]);
+    await pool.query('UPDATE usuarios SET creditos = creditos + $1 WHERE id = $2', [creditos, id]);
   }
 
   async setActivo(id: string, activo: boolean) {
