@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Put, Delete,
   Body, Param, UseGuards, HttpCode, HttpStatus,
+  ConflictException, BadRequestException,
 } from '@nestjs/common';
 import {
   IsString, IsNotEmpty, IsInt, IsOptional, IsIn, Min, Max,
@@ -8,6 +9,13 @@ import {
 import { pool }              from '../../../infrastructure/db';
 import { JwtAuthGuard }      from '../../../infrastructure/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../../infrastructure/guards/roles.guard';
+
+function handleDbError(e: any): never {
+  if (e.code === '23505') throw new ConflictException('Ya existe un registro con esa combinación');
+  if (e.code === '23503') throw new BadRequestException('Referencia inválida: el registro padre no existe');
+  if (e.code === '23514') throw new BadRequestException('Valor fuera del rango permitido');
+  throw e;
+}
 
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
@@ -60,20 +68,24 @@ export class ReferenciaAdminController {
 
   @Post('niveles')
   async createNivel(@Body() dto: NombreDto) {
-    const res = await pool.query(
-      'INSERT INTO nivel_educativo (nombre) VALUES ($1) RETURNING *',
-      [dto.nombre],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'INSERT INTO nivel_educativo (nombre) VALUES ($1) RETURNING *',
+        [dto.nombre],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Put('niveles/:id')
   async updateNivel(@Param('id') id: string, @Body() dto: NombreDto) {
-    const res = await pool.query(
-      'UPDATE nivel_educativo SET nombre=$1 WHERE id=$2 RETURNING *',
-      [dto.nombre, id],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'UPDATE nivel_educativo SET nombre=$1 WHERE id=$2 RETURNING *',
+        [dto.nombre, id],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Delete('niveles/:id')
@@ -97,20 +109,24 @@ export class ReferenciaAdminController {
 
   @Post('anios')
   async createAnio(@Body() dto: AnioDto) {
-    const res = await pool.query(
-      'INSERT INTO anio_escolaridad (nivel_id, numero, literal) VALUES ($1, $2, $3) RETURNING *',
-      [dto.nivel_id, dto.numero, dto.literal],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'INSERT INTO anio_escolaridad (nivel_id, numero, literal) VALUES ($1, $2, $3) RETURNING *',
+        [dto.nivel_id, dto.numero, dto.literal],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Put('anios/:id')
   async updateAnio(@Param('id') id: string, @Body() dto: AnioDto) {
-    const res = await pool.query(
-      'UPDATE anio_escolaridad SET nivel_id=$1, numero=$2, literal=$3 WHERE id=$4 RETURNING *',
-      [dto.nivel_id, dto.numero, dto.literal, id],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'UPDATE anio_escolaridad SET nivel_id=$1, numero=$2, literal=$3 WHERE id=$4 RETURNING *',
+        [dto.nivel_id, dto.numero, dto.literal, id],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Delete('anios/:id')
@@ -134,20 +150,24 @@ export class ReferenciaAdminController {
 
   @Post('areas')
   async createArea(@Body() dto: NivelAreaDto) {
-    const res = await pool.query(
-      'INSERT INTO area_curricular (nivel_id, nombre, codigo, carga_horaria) VALUES ($1, $2, $3, $4) RETURNING *',
-      [dto.nivel_id, dto.nombre, dto.codigo, dto.carga_horaria ?? null],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'INSERT INTO area_curricular (nivel_id, nombre, codigo, carga_horaria) VALUES ($1, $2, $3, $4) RETURNING *',
+        [dto.nivel_id, dto.nombre, dto.codigo, dto.carga_horaria ?? null],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Put('areas/:id')
   async updateArea(@Param('id') id: string, @Body() dto: NivelAreaDto) {
-    const res = await pool.query(
-      'UPDATE area_curricular SET nivel_id=$1, nombre=$2, codigo=$3, carga_horaria=$4 WHERE id=$5 RETURNING *',
-      [dto.nivel_id, dto.nombre, dto.codigo, dto.carga_horaria ?? null, id],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        'UPDATE area_curricular SET nivel_id=$1, nombre=$2, codigo=$3, carga_horaria=$4 WHERE id=$5 RETURNING *',
+        [dto.nivel_id, dto.nombre, dto.codigo, dto.carga_horaria ?? null, id],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Delete('areas/:id')
@@ -183,25 +203,29 @@ export class ReferenciaAdminController {
 
   @Post('temas')
   async createTema(@Body() dto: TemaTriDto) {
-    const res = await pool.query(
-      `INSERT INTO tema_trimestral
-         (area_curricular_id, anio_escolaridad_id, trimestre_num, titulo, descripcion)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [dto.area_curricular_id, dto.anio_escolaridad_id, dto.trimestre_num, dto.titulo, dto.descripcion ?? null],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        `INSERT INTO tema_trimestral
+           (area_curricular_id, anio_escolaridad_id, trimestre_num, titulo, descripcion)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [dto.area_curricular_id, dto.anio_escolaridad_id, dto.trimestre_num, dto.titulo, dto.descripcion ?? null],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Put('temas/:id')
   async updateTema(@Param('id') id: string, @Body() dto: TemaTriDto) {
-    const res = await pool.query(
-      `UPDATE tema_trimestral
-       SET area_curricular_id=$1, anio_escolaridad_id=$2, trimestre_num=$3,
-           titulo=$4, descripcion=$5
-       WHERE id=$6 RETURNING *`,
-      [dto.area_curricular_id, dto.anio_escolaridad_id, dto.trimestre_num, dto.titulo, dto.descripcion ?? null, id],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        `UPDATE tema_trimestral
+         SET area_curricular_id=$1, anio_escolaridad_id=$2, trimestre_num=$3,
+             titulo=$4, descripcion=$5
+         WHERE id=$6 RETURNING *`,
+        [dto.area_curricular_id, dto.anio_escolaridad_id, dto.trimestre_num, dto.titulo, dto.descripcion ?? null, id],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Delete('temas/:id')
@@ -234,25 +258,29 @@ export class ReferenciaAdminController {
 
   @Post('objetivos')
   async createObjetivo(@Body() dto: ObjetivoDto) {
-    const res = await pool.query(
-      `INSERT INTO objetivo_holistico
-         (anio_escolaridad_id, trimestre_num, ser, saber, hacer, decidir)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [dto.anio_escolaridad_id, dto.trimestre_num, dto.ser, dto.saber, dto.hacer, dto.decidir],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        `INSERT INTO objetivo_holistico
+           (anio_escolaridad_id, trimestre_num, ser, saber, hacer, decidir)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [dto.anio_escolaridad_id, dto.trimestre_num, dto.ser, dto.saber, dto.hacer, dto.decidir],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Put('objetivos/:id')
   async updateObjetivo(@Param('id') id: string, @Body() dto: ObjetivoDto) {
-    const res = await pool.query(
-      `UPDATE objetivo_holistico
-       SET anio_escolaridad_id=$1, trimestre_num=$2,
-           ser=$3, saber=$4, hacer=$5, decidir=$6
-       WHERE id=$7 RETURNING *`,
-      [dto.anio_escolaridad_id, dto.trimestre_num, dto.ser, dto.saber, dto.hacer, dto.decidir, id],
-    );
-    return res.rows[0];
+    try {
+      const res = await pool.query(
+        `UPDATE objetivo_holistico
+         SET anio_escolaridad_id=$1, trimestre_num=$2,
+             ser=$3, saber=$4, hacer=$5, decidir=$6
+         WHERE id=$7 RETURNING *`,
+        [dto.anio_escolaridad_id, dto.trimestre_num, dto.ser, dto.saber, dto.hacer, dto.decidir, id],
+      );
+      return res.rows[0];
+    } catch (e) { handleDbError(e); }
   }
 
   @Delete('objetivos/:id')

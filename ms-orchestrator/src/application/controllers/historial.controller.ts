@@ -1,9 +1,14 @@
 import {
   Controller, Get, Param, ParseUUIDPipe,
   UseGuards, Request, HttpException, HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
+import axios from 'axios';
 import { pool }         from '../../infrastructure/db';
 import { JwtAuthGuard } from '../../infrastructure/guards/jwt-auth.guard';
+
+const DOC_URL = process.env.DOC_PROCESSOR_URL ?? 'http://ms-doc-processor:8001';
 
 @Controller('api/historial')
 export class HistorialController {
@@ -15,7 +20,7 @@ export class HistorialController {
     try {
       const res = await client.query(`
         SELECT
-          pc.id                AS plan_id,
+          pc.id                AS id,
           pc.unidad_educativa,
           pc.creado_en         AS fecha,
           pc.filename,
@@ -51,6 +56,80 @@ export class HistorialController {
         throw new HttpException({ error: 'Plan no encontrado' }, HttpStatus.NOT_FOUND);
       }
       return res.rows[0];
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Genera una URL de descarga fresca para el plan indicado.
+   * Llama al ms-doc-processor para obtener una pre-signed URL renovada
+   * sin necesidad de re-subir el archivo.
+   */
+  @Get(':id/download-url')
+  @UseGuards(JwtAuthGuard)
+  async getDownloadUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const client = await pool.connect();
+    try {
+      const planRes = await client.query(
+        'SELECT filename FROM plan_curricular WHERE id = $1 AND usuario_id = $2',
+        [id, req.user.sub],
+      );
+      if (!planRes.rows[0]) {
+        return res.status(HttpStatus.NOT_FOUND).json({ error: 'Plan no encontrado' });
+      }
+
+      const docRes = await axios.get(
+        `${DOC_URL}/doc/${id}/signed-url`,
+        { validateStatus: () => true, timeout: 10000 },
+      );
+
+      if (docRes.status === 200 && docRes.data.url) {
+        return res.json({ url: docRes.data.url, filename: docRes.data.filename });
+      }
+
+      // Fallback: URL de descarga directa (el orchestrator hace de proxy)
+      return res.json({
+        url: `/api/historial/${id}/download`,
+        filename: planRes.rows[0].filename,
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  /** Proxy de descarga directa cuando S3 no está disponible */
+  @Get(':id/download')
+  @UseGuards(JwtAuthGuard)
+  async downloadDirect(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const client = await pool.connect();
+    try {
+      const planRes = await client.query(
+        'SELECT filename FROM plan_curricular WHERE id = $1 AND usuario_id = $2',
+        [id, req.user.sub],
+      );
+      if (!planRes.rows[0]) {
+        return res.status(HttpStatus.NOT_FOUND).json({ error: 'Plan no encontrado' });
+      }
+
+      const docStream = await axios.get(`${DOC_URL}/doc/${id}`, {
+        responseType: 'stream',
+        validateStatus: () => true,
+        timeout: 30000,
+      });
+
+      const filename = planRes.rows[0].filename ?? `PDC_${id}.docx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      docStream.data.pipe(res);
     } finally {
       client.release();
     }

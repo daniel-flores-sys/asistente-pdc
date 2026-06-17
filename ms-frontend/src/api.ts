@@ -122,6 +122,9 @@ export interface HistorialItem {
   trimestre: string;
   filename: string;
   download_url: string;
+  anio_literal?: string;
+  nivel_nombre?: string;
+  gestion_anio?: number;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -178,6 +181,9 @@ export const generatePDC = (payload: GeneratePayload): Promise<GenerateResult> =
 export const getHistorial = (): Promise<HistorialItem[]> =>
   api.get('/historial').then((r) => r.data);
 
+export const getHistorialDownloadUrl = (id: string): Promise<{ url: string; filename: string }> =>
+  api.get(`/historial/${id}/download-url`).then((r) => r.data);
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export const adminGetDocumentos = () =>
@@ -229,7 +235,7 @@ export const adminCreateReferencia = (recurso: string, data: unknown) =>
   api.post(`/admin/referencia/${recurso}`, data).then((r) => r.data);
 
 export const adminUpdateReferencia = (recurso: string, id: string, data: unknown) =>
-  api.put(`/admin/referencia/${recurso}/${id}`, data);
+  api.put(`/admin/referencia/${recurso}/${id}`, data).then((r) => r.data);
 
 export const adminDeleteReferencia = (recurso: string, id: string) =>
   api.delete(`/admin/referencia/${recurso}/${id}`);

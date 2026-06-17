@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.infrastructure.plan_repository import fetch_plan
-from src.infrastructure.s3_uploader import upload_to_s3
+from src.infrastructure.s3_uploader import upload_to_s3, get_presigned_url
 from src.application.services.doc_builder import build_document
 
 router = APIRouter()
@@ -77,13 +77,40 @@ def upload_document(plan_id: str):
     doc.save(buffer)
 
     filename = _make_filename(plan)
-    s3_url   = upload_to_s3(buffer, filename)
+    s3_key   = upload_to_s3(buffer, filename)
 
-    if s3_url:
-        return {"s3_url": s3_url, "fallback_url": None, "filename": filename}
+    if s3_key:
+        # Devuelve el key para persistencia + URL fresca para descarga inmediata
+        s3_url = get_presigned_url(s3_key)
+        return {"s3_key": s3_key, "s3_url": s3_url, "fallback_url": None, "filename": filename}
 
     return {
+        "s3_key":       None,
         "s3_url":       None,
         "fallback_url": f"/doc/{plan_id}",
         "filename":     filename,
     }
+
+
+@router.get("/doc/{plan_id}/signed-url", summary="Genera URL pre-firmada fresca para un plan ya subido")
+def get_signed_url(plan_id: str):
+    """
+    Regenera la URL de descarga sin re-subir el archivo.
+    Reconstruye el S3 key a partir del plan y genera una URL fresca.
+    """
+    try:
+        plan = fetch_plan(plan_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Error de base de datos: {exc}")
+
+    filename = _make_filename(plan)
+    s3_key   = f"pdc/{filename}"
+    url      = get_presigned_url(s3_key)
+
+    if url:
+        return {"url": url, "filename": filename}
+
+    # S3 no configurado o falló — el cliente puede usar GET /doc/{plan_id}
+    return {"url": None, "fallback_url": f"/doc/{plan_id}", "filename": filename}

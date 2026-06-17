@@ -104,14 +104,17 @@ export class AiGeneratorService {
         {},
         { timeout: 30000 },
       );
-      const { s3_url, fallback_url, filename } = docRes.data;
-      const download_url = s3_url ?? `${this.docPublicUrl}${fallback_url}`;
+      const { s3_key, s3_url, fallback_url, filename } = docRes.data;
 
+      // Persistir el S3 key (no la URL firmada que expira en 1h)
+      const stored_url = s3_key ?? fallback_url ?? `/doc/${plan_id}`;
       await client.query(
         'UPDATE plan_curricular SET filename = $1, download_url = $2 WHERE id = $3',
-        [filename, download_url, plan_id],
+        [filename, stored_url, plan_id],
       );
 
+      // Devolver la URL fresca para descarga inmediata en el wizard
+      const download_url = s3_url ?? `${this.docPublicUrl}${fallback_url ?? `/doc/${plan_id}`}`;
       return { plan_id, download_url, filename };
     } finally {
       client.release();

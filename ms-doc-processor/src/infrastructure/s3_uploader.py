@@ -22,45 +22,58 @@ _DOCX_MIME = (
 )
 
 
+def _s3_client():
+    import boto3
+    return boto3.client("s3", region_name=_REGION)
+
+
+def _s3_configured() -> bool:
+    return bool(os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY") and _BUCKET)
+
+
 def upload_to_s3(buffer: BytesIO, filename: str) -> str | None:
     """
     Sube `buffer` a S3 bajo la ruta `pdc/{filename}`.
-    Devuelve una URL pre-firmada válida por _EXPIRY segundos,
+    Devuelve el S3 key (`pdc/{filename}`) si el upload fue exitoso,
     o None si S3 no está configurado o falla el upload.
     """
-    if not all([
-        os.getenv("AWS_ACCESS_KEY_ID"),
-        os.getenv("AWS_SECRET_ACCESS_KEY"),
-        _BUCKET,
-    ]):
+    if not _s3_configured():
         logger.info("S3 no configurado — usando fallback local.")
         return None
 
     try:
-        import boto3
         from botocore.exceptions import BotoCoreError, ClientError
 
-        client = boto3.client("s3", region_name=_REGION)
         key = f"pdc/{filename}"
-
         buffer.seek(0)
-        client.upload_fileobj(
+        _s3_client().upload_fileobj(
             buffer,
             _BUCKET,
             key,
             ExtraArgs={"ContentType": _DOCX_MIME},
         )
-
-        url = client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": _BUCKET, "Key": key},
-            ExpiresIn=_EXPIRY,
-        )
-        return url
+        return key
 
     except ImportError:
         logger.warning("boto3 no instalado — fallback local.")
         return None
     except (BotoCoreError, ClientError) as exc:
         logger.error("Error al subir a S3: %s", exc)
+        return None
+
+
+def get_presigned_url(s3_key: str) -> str | None:
+    """Genera una URL pre-firmada fresca para un objeto ya existente en S3."""
+    if not _s3_configured():
+        return None
+    try:
+        from botocore.exceptions import BotoCoreError, ClientError
+        url = _s3_client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": _BUCKET, "Key": s3_key},
+            ExpiresIn=_EXPIRY,
+        )
+        return url
+    except Exception as exc:
+        logger.error("Error al generar URL pre-firmada: %s", exc)
         return None

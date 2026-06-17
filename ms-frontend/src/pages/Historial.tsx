@@ -12,12 +12,33 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Download, FileText, Loader2 } from 'lucide-react';
-import { getHistorial, HistorialItem } from '@/api';
+import { getHistorial, getHistorialDownloadUrl, HistorialItem } from '@/api';
 
 export default function Historial() {
   const [items, setItems] = useState<HistorialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownload = async (id: string) => {
+    setDownloading(id);
+    try {
+      const { url, filename } = await getHistorialDownloadUrl(id);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      // fallback: descargar via proxy directo
+      window.open(`/api/historial/${id}/download`, '_blank');
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   useEffect(() => {
     getHistorial()
@@ -86,11 +107,16 @@ export default function Historial() {
                       <Badge variant="outline">{item.trimestre}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <a href={item.download_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="w-4 h-4 mr-1" />
-                          {item.filename}
-                        </a>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={downloading === item.id}
+                        onClick={() => handleDownload(item.id)}
+                      >
+                        {downloading === item.id
+                          ? <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          : <Download className="w-4 h-4 mr-1" />}
+                        {item.filename}
                       </Button>
                     </TableCell>
                   </TableRow>
