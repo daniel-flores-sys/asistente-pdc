@@ -113,8 +113,19 @@ export class AiGeneratorService {
         [filename, stored_url, plan_id],
       );
 
-      // Devolver la URL fresca para descarga inmediata en el wizard
-      const download_url = s3_url ?? `${this.docPublicUrl}${fallback_url ?? `/doc/${plan_id}`}`;
+      // URL para descarga inmediata en el wizard.
+      // Si s3_url llegó null pero s3_key existe (archivo YA está en S3),
+      // pedirla fresca al endpoint /signed-url del doc-processor.
+      let download_url: string = s3_url ?? '';
+      if (!download_url && s3_key) {
+        const signedRes = await axios.get(
+          `${this.docUrl}/doc/${plan_id}/signed-url`,
+          { validateStatus: () => true, timeout: 10000 },
+        );
+        download_url = signedRes.data?.url ?? '';
+      }
+      download_url ||= `${this.docPublicUrl}${fallback_url ?? `/doc/${plan_id}`}`;
+
       return { plan_id, download_url, filename };
     } finally {
       client.release();
