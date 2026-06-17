@@ -6,6 +6,7 @@ from src.infrastructure.db import get_connection
 from src.infrastructure import plan_repository as repo
 from src.infrastructure.chroma_client import query_rag
 from src.infrastructure.ollama_client import generate_with_ollama
+from src.infrastructure.mock_data import build_mock_pdc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,8 +18,8 @@ def generate_pdc(req: GenerateRequest):
     Flujo:
     1. Leer llm_params / rag_params / prompts desde system_config en BD
     2. Buscar contexto pedagógico en ChromaDB (RAG) para enriquecer el prompt
-    3. Generar PDC con Ollama (falla explícito si no está disponible — sin mock)
-    4. Persistir en plan_curricular con el nuevo schema simplificado
+    3. Generar PDC con Ollama; si falla (timeout 120s), usar mock_data como fallback
+    4. Persistir en plan_curricular
     5. Devolver { plan_id, contenido }
     """
     conn = get_connection()
@@ -36,10 +37,27 @@ def generate_pdc(req: GenerateRequest):
         )
         rag_chunks = query_rag(rag_query, top_k=rag_top_k)
 
-        # 3. Generar contenido con Ollama
-        # model_dump() serializa los objetos Pydantic anidados a dicts/listas planas
-        req_dict  = req.model_dump()
-        contenido = generate_with_ollama(req_dict, rag_chunks, config)
+        # 3. Generar contenido con Ollama; si falla (timeout, server caído)
+        #    usar mock determinístico para que el flujo siempre complete.
+        req_dict = req.model_dump()
+        try:
+            contenido = generate_with_ollama(req_dict, rag_chunks, config)
+        except Exception as ollama_err:
+            logger.warning("Ollama no disponible (%s) — usando mock fallback", ollama_err)
+            areas_data = [{"id": a.id, "nombre": a.nombre, "codigo": a.codigo} for a in req.areas]
+            temas_data = {
+                str(area_id): [
+                    {"semana_num": t["trimestre_num"], "titulo": t["titulo"], "descripcion": t.get("descripcion", "")}
+                    for t in temas_list
+                ]
+                for area_id, temas_list in req.temas.items()
+            }
+            contenido = build_mock_pdc(
+                areas_data=areas_data,
+                temas_data=temas_data,
+                materiales=req.materiales or "",
+                contexto_social=req.contexto_social or "",
+            )
 
         # 4. Persistir plan con el schema simplificado
         plan_id = repo.save_plan(

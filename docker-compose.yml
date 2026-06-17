@@ -146,6 +146,9 @@ services:
       - pdc-overlay
     deploy:
       replicas: 1
+      # stop_grace_period: tiempo que Swarm espera antes de SIGKILL durante rolling update.
+      # Con Ollama timeout = 120s + doc-processor 30s, 300s da margen suficiente.
+      stop_grace_period: 300s
       restart_policy:
         condition: on-failure
         delay: 5s
